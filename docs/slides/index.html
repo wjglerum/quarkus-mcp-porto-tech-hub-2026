@@ -242,7 +242,7 @@
   <h2>Same Porto Tech Hub 2026 schedule, real Quarkus MCP server</h2>
   <div class="cards cols-3" style="margin-top:26px">
     <div class="card"><div class="label">Demo 1 &nbsp;/&nbsp; Public</div><h3>Browse the schedule</h3><p>OAuth 2.1 auth code + PKCE + CIMD</p></div>
-    <div class="card"><div class="label">Demo 2 &nbsp;/&nbsp; Personal</div><h3>My agenda, my ratings</h3><p>Token propagation, full audit</p></div>
+    <div class="card"><div class="label">Demo 2 &nbsp;/&nbsp; Personal</div><h3>My agenda, my ratings</h3><p>Token exchange per hop, full audit</p></div>
     <div class="card warn"><div class="label">Demo 3 &nbsp;/&nbsp; Sensitive</div><h3>Speaker-only actions</h3><p>Step-up authentication</p></div>
   </div>
 </section>
@@ -337,10 +337,10 @@
     <div class="node"><b>Enterprise App</b><span>has user token</span></div>
     <div class="arrow">token</div>
     <div class="node hot"><b>MCP Server</b><span>tools</span></div>
-    <div class="arrow">token</div>
+    <div class="arrow">new token</div>
     <div class="node"><b>Your API</b><span>enforces</span></div>
   </div>
-  <p class="tagline">Token rides along. <strong>Identity survives every hop.</strong></p>
+  <p class="tagline">The identity rides along, not the token. <strong>A new token per hop, same user.</strong></p>
   <p class="note">Next: Enterprise-Managed Authorization (ID-JAG, an official MCP extension) lets the company IdP decide which agents reach which MCP servers.</p>
 </section>
 
@@ -360,7 +360,7 @@
 <section class="slide center demo" data-bare>
   <div class="tag">DEMO</div>
   <h1>My agenda, my audit</h1>
-  <p class="sub">Token propagation through every hop</p>
+  <p class="sub">Same identity at every hop, a new token per hop</p>
   <div class="notes">Chat at http://localhost:8082/, log out and log in as willem.jan / willem.jan first. "Bookmark the GraalVM talk for me" → "Show me my agenda" → "Also add the Practical MCP Security talk" → "Do I have any conflicts?" (both 11:10) → "Rate the MCP Security talk 5 stars with comment 'great use of caffeine'". Audit dashboard on screen two. Backup: demo-2 video.</div>
 </section>
 
@@ -373,7 +373,7 @@
     <div><span class="k">action</span><span class="v">RATE_SESSION</span></div>
     <div><span class="k">target</span><span class="v">session:… (Practical MCP Security)</span></div>
     <div><span class="k">attendee_subject</span><span class="id">willem.jan</span></div>
-    <div><span class="k">executed_by_client</span><span class="v">conference-chat</span></div>
+    <div><span class="k">executed_by_client</span><span class="v">conference-chat via conference-mcp</span></div>
     <div><span class="k">token_acr</span><span class="v">1</span></div>
     <div><span class="k">token_iss</span><span class="v">http://localhost:…/realms/porto</span></div>
     <div><span class="k">created_at</span><span class="v">2026-11-10T11:41:14+00:00</span></div>
@@ -383,13 +383,14 @@
 
 <!-- 20 -->
 <section class="slide">
-  <div class="eyebrow">Honest footnote</div>
+  <div class="eyebrow">How the token got there</div>
   <h2>Propagate the identity, not the token</h2>
   <div class="cards cols-2" style="margin-top:22px">
-    <div class="card warn"><div class="label">What you just saw</div><h3>Token passthrough</h3><p>One token, two audiences. Anything that holds it can call the API directly. The MCP spec says: MUST NOT.</p></div>
-    <div class="card new"><div class="label">The fix</div><h3>Token exchange (RFC 8693)</h3><p>The MCP server swaps my token for a new one: aud=conference-api, act=conference-mcp. The audit log names me and the agent.</p></div>
+    <div class="card warn"><div class="label">What we don't do</div><h3>Token passthrough</h3><p>Forward the user's token to the API. Anything holding it can call the API directly. The MCP spec says: MUST NOT.</p></div>
+    <div class="card new"><div class="label">What you just saw</div><h3>Token exchange (RFC 8693)</h3><p>The MCP server swaps my token at Keycloak for a new one: same user, aud=conference-api, azp=conference-mcp.</p></div>
   </div>
-  <p class="tagline">Same user, narrower token per hop. <strong>Keycloak and Quarkus both support it.</strong></p>
+  <p class="tagline">Catch: Keycloak drops the MFA level on exchange. <strong>So the hop that saw it enforces it, and the API trusts that only from the MCP server.</strong></p>
+  <div class="notes">Verified on Keycloak 26.7.4: acr urn:porto:mfa comes back as 1 after exchange. conference-mcp checks acr itself and sends X-Mcp-Acr / X-Mcp-Client; conference-api accepts those only when azp=conference-mcp. Keycloak 26.7 has experimental delegation with an act claim.</div>
 </section>
 
 <!-- 21 -->

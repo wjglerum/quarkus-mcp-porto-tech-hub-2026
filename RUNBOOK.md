@@ -186,7 +186,7 @@ Talking points: **PKCE, CIMD as the default, DCR as the deprecated legacy path (
 
 The audit dashboard shows nothing yet (read-only tools do not audit). Tell the audience: "Read tools do not show up. That is on purpose. The audit log records intent, not curiosity."
 
-## Demo 2: Personal agenda with token propagation (~10 min)
+## Demo 2: Personal agenda with token exchange (~10 min)
 
 1. Log out of the attendee session and log in as **willem.jan / willem.jan**. Demo 2 and 3 both run as you, and the audit punchline names you. The agenda starts empty.
 2. Ask: *"Bookmark the GraalVM talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
@@ -202,9 +202,9 @@ The audit dashboard shows nothing yet (read-only tools do not audit). Tell the a
      token_acr            1
      ...
    ```
-   `executed_by_client` reads `conference-chat`: the enterprise app acted, on your token.
+   `executed_by_client` reads `conference-chat via conference-mcp`: the enterprise app asked, the MCP server called the API with a token it exchanged for one minted for `conference-api`.
 7. **Punchline:** not "AI rated it 5 stars" but "Willem Jan rated it 5 stars, executed by an AI on his behalf, with his token, fully auditable."
-8. Be ready for the question "isn't forwarding the token passthrough?". Yes: today the token carries both audiences. The fix is token exchange (RFC 8693), on the next slide.
+8. Be ready for "isn't forwarding the token passthrough?". No: your token (aud=conference-mcp) stops at the MCP server, which exchanges it (RFC 8693) for a conference-api token per call. Next slide.
 
 ## Demo 3: Step-up auth (~8 min)
 

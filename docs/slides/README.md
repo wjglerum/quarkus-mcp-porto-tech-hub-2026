@@ -20,7 +20,7 @@ Open `index.html` in any browser. No build step, no internet, no dependencies. T
 - The venue, demo prompts against the Porto Tech Hub schedule, and the `porto` realm.
 - A short aside on stateless MCP (slide 5).
 - CIMD as the default and DCR as deprecated (slide 13).
-- An honest footnote on token passthrough versus token exchange (slide 20).
+- Token exchange instead of token passthrough, and why the MCP server has to vouch for the MFA level Keycloak drops on exchange (slide 20).
 - An honest caveat that `acr` step-up is not part of MCP itself (slide 24).
 - A "beyond the token" slide on prompt injection and tool poisoning (slide 25).
 

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import nl.lunatech.porto.api.domain.AuditEvent;
+import nl.lunatech.porto.api.security.StepUp;
 import nl.lunatech.porto.api.security.Tokens;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
@@ -21,15 +22,18 @@ public class AuditService {
     @Inject
     SecurityIdentity identity;
 
+    @Inject
+    StepUp stepUp;
+
     @Transactional
     public void record(String action, String target, String detail) {
         AuditEvent event = new AuditEvent();
         event.attendeeSubject = resolveSubject();
         event.action = action;
         event.target = target;
-        event.tokenAcr = Tokens.acr(jwt);
+        event.tokenAcr = stepUp.acr();
         event.tokenAmr = Tokens.amr(jwt);
-        event.executedByClient = Tokens.azp(jwt);
+        event.executedByClient = stepUp.executedByClient();
         event.tokenIss = Tokens.iss(jwt);
         // Audit entries record when the action actually happened, in real time,
         // independent of the simulated conference clock used for the schedule.

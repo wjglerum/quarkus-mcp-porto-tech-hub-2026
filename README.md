@@ -10,7 +10,7 @@
 | Path | What it is |
 |------|------------|
 | `conference-api/`   | Quarkus REST + Panache + Postgres. Owns the schedule, attendee agendas, ratings, and the audit log. Serves the live audit dashboard at `/audit-live`. |
-| `conference-mcp/`   | Quarkus MCP server (streamable HTTP). Exposes tools to AI clients and propagates the user OAuth token to `conference-api`. |
+| `conference-mcp/`   | Quarkus MCP server (streamable HTTP). Exposes tools to AI clients and exchanges the user OAuth token (RFC 8693) for a `conference-api` token on every call. |
 | `conference-chat/`  | Quarkus chat client. OIDC web-app login, LangChain4j MCP client to `conference-mcp`, Qute-rendered shell. |
 | `keycloak-realm.json` | Single shared realm export at the monorepo root. All three apps reference it via `../keycloak-realm.json`. |
 | `SPEC.md`           | Original build spec for the demo (canonical reference). |
@@ -21,7 +21,7 @@ No Docker compose file: every backing service is auto-provisioned by **Quarkus D
 
 ## Architecture
 
-Three Quarkus apps share one Keycloak realm. Clients authenticate against Keycloak (chat via OIDC code flow + PKCE, MCP Inspector via DCR or CIMD + PKCE), then call the MCP server with a Bearer token. The MCP server validates the token, then propagates it to `conference-api`, which enforces roles and writes the audit log.
+Three Quarkus apps share one Keycloak realm. Clients authenticate against Keycloak (chat via OIDC code flow + PKCE, MCP Inspector via DCR or CIMD + PKCE), then call the MCP server with a Bearer token. The MCP server validates the token, then exchanges it at Keycloak for a token minted for `conference-api` (RFC 8693 token exchange) and calls the API with that. `conference-api` enforces roles and step-up and writes the audit log.
 
 ```mermaid
 graph LR
@@ -38,16 +38,17 @@ graph LR
 
   USR -->|HTTPS| CHAT
   INS -->|MCP streamable HTTP + Bearer| MCP
-  CHAT -->|MCP + propagated token| MCP
+  CHAT -->|MCP + user token| MCP
   CHAT -->|OIDC code flow + PKCE| KC
   INS -->|DCR or CIMD + PKCE| KC
-  MCP -->|REST + propagated Bearer| API
+  MCP -->|token exchange RFC 8693| KC
+  MCP -->|REST + exchanged Bearer| API
   MCP -.->|validate JWT| KC
   API -.->|validate JWT| KC
   API --> DB
 ```
 
-The heart of the demo is token propagation: the same user token flows from the client, through the MCP tool call, into `conference-api`, where the action is authorized and audited under the user's identity, not the AI's.
+The heart of the demo is identity propagation without token passthrough. The user's token (audience `conference-mcp`) stops at the MCP server. For each API call the MCP server exchanges it for a new token for the same user with audience `conference-api` and `azp=conference-mcp`. The action is authorized and audited under the user's identity, and the audit log also names the client that acted (`conference-chat via conference-mcp`).
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +65,9 @@ sequenceDiagram
   KC-->>C: Access token (roles, preferred_username)
   C->>MCP: tools/call bookmark_session + Bearer
   MCP->>KC: validate JWT
-  MCP->>API: POST /me/agenda + propagated Bearer
+  MCP->>KC: token exchange: subject_token=user token, audience=conference-api
+  KC-->>MCP: token for the same user, aud=conference-api, azp=conference-mcp
+  MCP->>API: POST /me/agenda + exchanged Bearer + X-Mcp-Acr / X-Mcp-Client
   API->>API: enforce @RolesAllowed("attendee")
   API->>DB: insert bookmark + audit_event
   API-->>MCP: 200 OK
@@ -89,6 +92,18 @@ The whole `/mcp` endpoint is gated at the HTTP layer: every request must carry a
 On top of the role check, `conference-mcp` validates the token **audience**: only tokens carrying `aud=conference-mcp` are accepted (`quarkus.oidc.token.audience`), as the MCP authorization spec requires of resource servers. Keycloak has no RFC 8707 resource-indicator support yet, so the audience comes from the realm's `attendee` client scope, which carries audience mappers for `conference-mcp` and `conference-api` (the officially documented Keycloak workaround). `conference-chat` has that scope by default; DCR and CIMD clients request `scope=attendee`, which is exactly what the challenge and the resource metadata advertise. A token from another client in the realm without that scope is rejected with a `401` even if its user has the role, closing the confused-deputy hole of accepting any realm token.
 
 This is the endpoint-level gate. It is distinct from the step-up case in demo 3, where a missing MFA `acr` surfaces per tool as `insufficient_user_authentication`.
+
+## Token exchange and step-up across the hop
+
+`conference-mcp` never forwards the user's token. `quarkus-rest-client-oidc-token-propagation` with `exchange-token=true` performs an RFC 8693 token exchange at Keycloak before every `conference-api` call. Keycloak allows it only because `conference-mcp` is a confidential client with standard token exchange enabled and the `conference-api` audience in its default client scopes. Any other requested audience is refused. `conference-api` validates `aud=conference-api` in every profile, so a user token sent straight to the API is rejected with a 401.
+
+Keycloak's standard token exchange keeps the user, the roles and the session, but **not the step-up level**: an `acr` of `urn:porto:mfa` comes back as `1` (verified against Keycloak 26.7.4; `scope`, `acr_values` and `claims` on the exchange request do not change it). So the hop that saw the original token enforces and asserts it:
+
+- `conference-mcp` checks the `acr` on the user's token before any step-up tool runs, as before.
+- It sends what it verified as `X-Mcp-Acr` and the client the user signed in with as `X-Mcp-Client`.
+- `conference-api` trusts those headers **only** on a token issued to `conference-mcp` (`azp`). Only that client holds the secret to obtain one. For any other caller, the token's own `acr` is all that counts.
+
+Keycloak 26.7 adds token exchange *delegation* with an `act` claim, as an experimental feature. Until that is stable, `azp` plus the asserted client header is how the audit log names both the user and the agent.
 
 ## Client registration: DCR vs CIMD
 
@@ -141,7 +156,7 @@ Open the page on a secondary monitor and run the demos. New events appear within
 See [`RUNBOOK.md`](RUNBOOK.md) for the moment-by-moment script of the three live demos:
 
 1. **Public** browse the schedule. PKCE + Authorization Code Flow, with client identity via DCR and via CIMD.
-2. **Personal** agenda, ratings, conflicts. Token propagation, full audit.
+2. **Personal** agenda, ratings, conflicts. Token exchange per hop, full audit.
 3. **Sensitive** speaker-only tools with step-up MFA. Server-driven challenge.
 
 ## Brand palette (lifted from the deck)

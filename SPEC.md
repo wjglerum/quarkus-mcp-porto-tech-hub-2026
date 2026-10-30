@@ -14,7 +14,7 @@
 A self-contained build spec for the demo. A fresh agent should be able to read this file and rebuild the whole stack without referring to the original conversation. It defines three Quarkus applications:
 
 1. **conference-api**: stores the Porto Tech Hub schedule, attendee data, ratings, and audit log. Exposes REST endpoints under `/api/v1/` and serves the second-screen audit dashboard at `/audit-live/`.
-2. **conference-mcp**: Quarkus MCP server. Thin protocol adapter that exposes tools to AI clients, secured with OAuth 2.1 and token propagation to conference-api.
+2. **conference-mcp**: Quarkus MCP server. Thin protocol adapter that exposes tools to AI clients, secured with OAuth 2.1, and calling conference-api with a token obtained through RFC 8693 token exchange (never the user's token itself).
 3. **conference-chat**: AI chat interface for the live demo. Logs the speaker in via OIDC web-app flow, lets the user (or a swappable LLM) call MCP tools through `conference-mcp`, and renders tool calls in a deck-styled UI.
 
 All three apps share one Keycloak Dev Service. There is no `docker compose` file: every backing service is auto-provisioned by Quarkus Dev Services.
@@ -413,7 +413,7 @@ A LangChain4j `AiService` with the MCP tool provider attached. System prompt is 
 - Realm: `porto`
 - Clients (all confidential except where noted):
   - `conference-api` -- bearer-only, audience `conference-api`.
-  - `conference-mcp` -- confidential, used for service-to-service calls and as the OIDC client for the Dev UI login on port 8081. **PKCE method `S256` required on the auth code flow.** Token exchange enabled.
+  - `conference-mcp` -- confidential (secret `conference-mcp-secret`), no browser flows. **Standard token exchange enabled** (`standard.token.exchange.enabled`), with the `conference-api` audience scope as a default client scope so it can exchange user tokens for `aud=conference-api`.
   - `conference-chat` -- confidential, dedicated client for the chat web-app on port 8082. PKCE `S256` required. Redirect URIs include `http://localhost:8082/*` plus the Dev UI callback paths on 8080 and 8081.
   - `mcp-clients` -- public, allows Dynamic Client Registration. Used by MCP Inspector and any other MCP client.
 - **Realm roles vs client scopes**: `attendee` and `speaker` are realm **roles**, not client scopes. The realm ships no custom `attendee` / `speaker` client scopes; the roles ride into the access token via the realm-default `roles` scope and surface at the JWT path `realm_access/roles`. None of the three apps may set `quarkus.oidc.authentication.scopes=attendee,speaker` (or any other non-existent scope) -- Keycloak rejects the auth request with `Invalid scopes`. The only OIDC scope-related config that should appear is `quarkus.oidc.roles.role-claim-path=realm_access/roles` on each app. The realm's `realm roles` mapper writes `realm_access.roles` into the **access token only** (not the ID token). conference-api and conference-mcp run in `service` mode, so they read roles from the access token by default. conference-chat runs in `web-app` mode, where roles default to the ID token, so it must also set `quarkus.oidc.roles.source=accesstoken`; otherwise `SecurityIdentity.getRoles()` is empty and the identity panel shows no roles. Read roles from `SecurityIdentity.getRoles()`, not `JsonWebToken.getGroups()` (the latter reads the token `groups` claim, which the realm does not populate).
@@ -422,7 +422,7 @@ A LangChain4j `AiService` with the MCP tool provider attached. System prompt is 
   - `willem.jan` / `willem.jan` -- roles `attendee` + `speaker`, linked to the Willem Jan speaker fixture. TOTP-enrolled in the seeded realm (secret `portomcp2026stepupseed`).
   - `admin-demo` / `admin` -- roles `attendee` + `speaker`, full demo operator account. TOTP-enrolled with the same seeded secret.
 - Authentication flow: the realm ships a custom `Browser Stepup` browser flow with two conditional Level-of-Assurance subflows (password at LoA 1, OTP at LoA 2, `loa-max-age` 300s on LoA 2) and the `acr.loa.map` entry `urn:porto:mfa` -> level 2. The step-up demo surfaces as a 401 + `WWW-Authenticate: Bearer error=insufficient_user_authentication, acr_values=urn:porto:mfa` from `conference-api` and a `ToolCallException("insufficient_user_authentication: ...")` from `conference-mcp`.
-- Token exchange is **not** enabled. No client uses service-account or direct-access grants.
+- Standard token exchange (V2) is enabled on `conference-mcp` only. The `attendee` scope gives user tokens the `conference-mcp` audience only. No client uses service-account or direct-access grants.
 - Realm `frontendUrl` is **not** hardcoded. Dev Services maps Keycloak to a dynamic port; if `frontendUrl` is hardcoded, OIDC discovery breaks.
 
 Quarkus Dev Services boots Keycloak with this realm. All three apps configure the same `service-name=porto-keycloak` and `shared=true` so they share a single container. Keep the three apps on the same Quarkus platform version (run `quarkus update` if drift creeps in); a mismatched Quarkus version is the only way `shared=true` ends up spawning two containers because each Quarkus release pins a different default Keycloak image.
@@ -440,7 +440,7 @@ The realm was derived from Dev Services' default `quarkus` realm so it ships the
 ### Quarkus security config
 
 - **conference-api**: `quarkus-oidc` in `service` mode (bearer-only), audience `conference-api`, roles from claim path `realm_access/roles`.
-- **conference-mcp**: `quarkus-oidc` in `service` mode. Validates incoming MCP-client tokens. REST clients into conference-api are annotated `@AccessToken` (via `quarkus-rest-client-oidc-token-propagation`) so the user's bearer token rides along. For step-up tools, the tiny `StepUp.require()` helper inspects `acr` and `amr` and raises `ToolCallException("insufficient_user_authentication: ...")` on insufficiency.
+- **conference-mcp**: `quarkus-oidc` in `service` mode. Validates incoming MCP-client tokens. REST clients into conference-api are annotated `@AccessToken` (via `quarkus-rest-client-oidc-token-propagation`) with `exchange-token=true`, so every call carries a token exchanged for `aud=conference-api`, plus `X-Mcp-Acr` / `X-Mcp-Client` headers with what the exchange drops. For step-up tools, the tiny `StepUp.require()` helper inspects `acr` and `amr` and raises `ToolCallException("insufficient_user_authentication: ...")` on insufficiency.
 - **conference-chat**: `quarkus-oidc` in `web-app` mode. `pkce-required=true`. Configured client is `conference-chat`. After login, the access token is available to the LangChain4j MCP client (set as the outbound `Authorization` header on every MCP call).
 
 ### PKCE notes (lessons from the first build)
@@ -495,7 +495,7 @@ Talking points: PKCE, DCR, why these matter for AI clients.
 
 The audit dashboard stays mostly quiet (read-only tools do not audit).
 
-### Demo 2: Personal agenda with token propagation (~10 min)
+### Demo 2: Personal agenda with token exchange (~10 min)
 
 1. Log in (or re-login) as `willem.jan / willem.jan`.
 2. Click "Bookmark the GraalVM talk for me". A blue `BOOKMARK_ADD` event flies onto `/audit-live/` within 2 seconds.

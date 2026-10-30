@@ -20,12 +20,17 @@ import nl.lunatech.porto.mcp.dto.CreateRatingRequest;
 import nl.lunatech.porto.mcp.dto.RatingDto;
 import nl.lunatech.porto.mcp.dto.SessionDto;
 import nl.lunatech.porto.mcp.dto.SessionFeedbackDto;
+import nl.lunatech.porto.mcp.security.StepUp;
+import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import java.util.List;
 
 @RegisterRestClient(configKey = "conference-api-me")
+// The user's token is not forwarded: quarkus.rest-client-oidc-token-propagation.exchange-token
+// swaps it for one minted for conference-api (RFC 8693) before every call.
 @AccessToken
+@RegisterClientHeaders(ExchangeHopHeaders.class)
 @Path("/api/v1")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -83,7 +88,7 @@ public interface MeConferenceApi {
                 String challenge = response.getHeaderString("WWW-Authenticate");
                 if (challenge != null && challenge.contains("insufficient_user_authentication")) {
                     yield new ToolCallException("insufficient_user_authentication: backend requires step-up. "
-                            + "Re-authenticate with acr_values=urn:porto:mfa and retry.");
+                            + "Re-authenticate with acr_values=" + StepUp.MFA_ACR + " and retry.");
                 }
                 yield new ToolCallException("authentication_failed: the backend rejected the token"
                         + (challenge == null ? "" : " (" + challenge + ")")

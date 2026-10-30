@@ -258,13 +258,14 @@
     },
     {
       "clientId": "conference-mcp",
-      "name": "Conference MCP Server (resource server)",
+      "name": "Conference MCP Server (resource server, token exchange requester)",
       "enabled": true,
-      "bearerOnly": true,
+      "bearerOnly": false,
       "protocol": "openid-connect",
       "publicClient": false,
       "attributes": {
-        "use.refresh.tokens": "false"
+        "use.refresh.tokens": "false",
+        "standard.token.exchange.enabled": "true"
       },
       "defaultClientScopes": [
         "basic",
@@ -272,12 +273,19 @@
         "email",
         "roles",
         "web-origins",
-        "acr"
+        "acr",
+        "conference-api"
       ],
       "optionalClientScopes": [
         "offline_access",
         "microprofile-jwt"
-      ]
+      ],
+      "clientAuthenticatorType": "client-secret",
+      "secret": "conference-mcp-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
     },
     {
       "clientId": "conference-chat",
@@ -1006,7 +1014,7 @@
     },
     {
       "name": "attendee",
-      "description": "Grants the conference-mcp and conference-api audiences so the token can be used at the MCP endpoint and propagated to the API",
+      "description": "Grants the conference-mcp audience so the token can be used at the MCP endpoint. The MCP server exchanges it for a conference-api token (RFC 8693); the user token itself is not accepted by the API.",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -1024,7 +1032,18 @@
             "id.token.claim": "false",
             "introspection.token.claim": "true"
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "conference-api",
+      "description": "Audience for tokens that conference-mcp obtains through token exchange",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
         {
           "name": "conference-api audience",
           "protocol": "openid-connect",

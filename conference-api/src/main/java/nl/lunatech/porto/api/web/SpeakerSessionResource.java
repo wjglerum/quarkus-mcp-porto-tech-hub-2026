@@ -1,6 +1,5 @@
 package nl.lunatech.porto.api.web;
 
-import io.quarkus.oidc.AuthenticationContext;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -20,15 +19,19 @@ import nl.lunatech.porto.api.domain.Session;
 import nl.lunatech.porto.api.dto.AttendeeBookmarkDto;
 import nl.lunatech.porto.api.dto.CancelSessionRequest;
 import nl.lunatech.porto.api.dto.SessionDto;
+import nl.lunatech.porto.api.security.StepUp;
 
 import java.util.List;
 
 @Path("/api/v1/sessions/{id}")
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed("speaker")
-// Quarkus turns an insufficient acr into the RFC 9470 challenge (401 + WWW-Authenticate)
-@AuthenticationContext("urn:porto:mfa")
 public class SpeakerSessionResource {
+
+    // Not @AuthenticationContext: the token arrives through conference-mcp's token exchange,
+    // which drops the acr, so StepUp also accepts the acr that hop verified.
+    @Inject
+    StepUp stepUp;
 
     @Inject
     AttendeeService attendees;
@@ -40,6 +43,7 @@ public class SpeakerSessionResource {
     @Path("/attendees")
     @Transactional
     public List<AttendeeBookmarkDto> attendees(@PathParam("id") Long id) {
+        stepUp.require();
         Session session = requireOwnedSession(id);
         List<AttendeeBookmarkDto> list = Bookmark.<Bookmark>list("session.id = ?1 order by createdAt asc", session.id)
                 .stream()
@@ -53,6 +57,7 @@ public class SpeakerSessionResource {
     @Path("/cancel")
     @Transactional
     public SessionDto cancel(@PathParam("id") Long id, CancelSessionRequest req) {
+        stepUp.require();
         if (req == null || req.reason() == null || req.reason().isBlank()) {
             throw new WebApplicationException("reason is required", 400);
         }
