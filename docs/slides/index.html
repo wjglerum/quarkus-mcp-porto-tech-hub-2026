@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practical MCP Security in Action - Porto Tech Hub 2026</title>
+<style>
+  :root {
+    --bg: #0E1116;
+    --surface: #171B22;
+    --surface2: #1D222B;
+    --border: #2A313C;
+    --ink: #F5F7FA;
+    --muted: #9AA4B2;
+    --dim: #5E6876;
+    --brand: #0088D3;
+    --brand-soft: #4DB3EA;
+    --amber: #F2A65A;
+    --red: #E5636B;
+    --sans: Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background:
+      radial-gradient(1100px 650px at 85% -10%, rgba(0,136,211,.14), transparent 60%),
+      radial-gradient(900px 600px at 5% 110%, rgba(242,166,90,.07), transparent 60%),
+      var(--bg);
+    color: var(--ink);
+    font: 400 22px/1.45 var(--sans);
+    overflow: hidden;
+  }
+  #deck { height: 100vh; width: 100vw; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column; justify-content: center;
+    padding: 7vh 8vw 11vh;
+  }
+  .slide.active { display: flex; }
+  .slide.center { align-items: center; text-align: center; }
+
+  h1 { font-size: 64px; line-height: 1.05; margin: 0 0 18px; font-weight: 700; letter-spacing: -.5px; }
+  h2 { font-size: 46px; line-height: 1.1; margin: 0 0 14px; font-weight: 700; }
+  h3 { font-size: 26px; margin: 0 0 6px; font-weight: 700; }
+  p { margin: 0 0 12px; }
+  .sub { color: var(--muted); font-size: 26px; margin-bottom: 34px; }
+  .eyebrow { color: var(--brand-soft); font: 600 18px/1 var(--mono); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 18px; }
+  .brand { color: var(--brand-soft); }
+  .amber { color: var(--amber); }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); }
+  .big { font-size: 78px; line-height: 1.05; font-weight: 700; margin: 0 0 22px; }
+  .tagline { margin-top: 34px; color: var(--muted); font-size: 22px; font-style: italic; }
+  .tagline strong { color: var(--ink); font-style: normal; }
+
+  /* footer: talk + counter */
+  .chrome {
+    position: fixed; left: 8vw; right: 8vw; bottom: 4vh;
+    display: flex; justify-content: space-between;
+    color: var(--dim); font: 15px/1 var(--mono); pointer-events: none;
+  }
+  body.bare .chrome { visibility: hidden; }
+  #progress { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--brand); transition: width .2s; }
+
+  /* cards */
+  .cards { display: grid; gap: 22px; }
+  .cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px 26px;
+  }
+  .card p { color: var(--muted); font-size: 20px; margin: 0; }
+  .card .label { font: 600 15px/1 var(--mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-soft); margin-bottom: 12px; }
+  .card.warn { border-color: rgba(242,166,90,.55); background: linear-gradient(180deg, rgba(242,166,90,.08), transparent 70%), var(--surface); }
+  .card.warn .label { color: var(--amber); }
+  .card.new { border-color: rgba(0,136,211,.6); background: linear-gradient(180deg, rgba(0,136,211,.10), transparent 70%), var(--surface); }
+  .card ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 20px; }
+  .card li { margin: 4px 0; }
+
+  /* flow diagrams */
+  .flow { display: flex; align-items: stretch; gap: 0; margin: 10px 0 8px; }
+  .node {
+    flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 18px; text-align: center;
+  }
+  .node b { display: block; font-size: 24px; margin-bottom: 4px; }
+  .node span { color: var(--muted); font-size: 18px; }
+  .node.hot { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
+  .node.step { border-color: rgba(242,166,90,.6); }
+  .arrow {
+    flex: 0 0 96px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: var(--brand-soft); font: 14px/1.2 var(--mono);
+  }
+  .arrow::after { content: "\2192"; font-size: 30px; line-height: 1; color: var(--brand); }
+  .arrow.amber, .arrow.amber::after { color: var(--amber); }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-size: 19px; }
+  th { text-align: left; color: var(--muted); font: 600 14px/1 var(--mono); letter-spacing: 1.5px; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr.hl td { background: rgba(0,136,211,.10); }
+  tr.hl td:first-child { color: var(--brand-soft); font-weight: 700; }
+  .note { margin-top: 20px; color: var(--muted); font-size: 20px; }
+
+  /* steps */
+  .steps { display: grid; gap: 16px; }
+  .stepline { display: flex; gap: 20px; align-items: flex-start; }
+  .num { flex: 0 0 46px; height: 46px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; }
+  .stepline p { color: var(--muted); font-size: 20px; margin: 0; }
+
+  /* audit record */
+  .record { background: #0A0D11; border: 1px solid var(--border); border-radius: 14px; padding: 22px 28px; font: 20px/1.6 var(--mono); max-width: 980px; }
+  .record .k { color: var(--muted); display: inline-block; width: 260px; }
+  .record .v { color: var(--ink); }
+  .record .id { color: var(--amber); font-weight: 700; }
+  .record .head { color: var(--brand-soft); margin-bottom: 6px; }
+
+  /* code */
+  pre { background: #0A0D11; border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; margin: 0; font: 17px/1.5 var(--mono); color: var(--ink); overflow: hidden; }
+  pre .c { color: var(--dim); }
+  pre .s { color: var(--brand-soft); }
+  pre .a { color: var(--amber); }
+
+  /* demo divider */
+  .demo { background: radial-gradient(900px 500px at 50% 45%, rgba(0,136,211,.25), transparent 70%); }
+  .demo .tag { font: 700 22px/1 var(--mono); letter-spacing: 8px; color: var(--brand-soft); margin-bottom: 20px; }
+  .demo h1 { font-size: 84px; }
+
+  /* title + about */
+  .title .meta { margin-top: 38px; font-size: 24px; }
+  .title .meta .muted { font-size: 20px; }
+  .title .where { margin-top: 26px; display: inline-flex; gap: 14px; font: 18px/1 var(--mono); color: var(--amber); border: 1px solid rgba(242,166,90,.5); border-radius: 999px; padding: 12px 20px; }
+  .about { display: grid; grid-template-columns: 300px 1fr; gap: 56px; align-items: center; }
+  .photo { width: 300px; height: 300px; border-radius: 50%; border: 2px solid var(--brand); background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--dim); font: 16px var(--mono); overflow: hidden; }
+  .photo img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* thanks */
+  .thanks { display: grid; grid-template-columns: 1fr 300px; gap: 56px; align-items: center; }
+  .qr { background: #fff; border-radius: 16px; padding: 14px; width: 300px; height: 300px; }
+  .qr svg { width: 100%; height: 100%; display: block; }
+  .links { font: 22px/1.9 var(--mono); color: var(--brand-soft); }
+
+  /* presenter notes */
+  .notes { display: none; position: absolute; left: 8vw; right: 8vw; bottom: 8vh; background: rgba(23,27,34,.96); border: 1px dashed var(--amber); border-radius: 10px; padding: 14px 18px; color: var(--muted); font-size: 17px; }
+  body.show-notes .notes { display: block; }
+
+  @media print {
+    @page { size: 1600px 900px; margin: 0; }
+    body { overflow: visible; }
+    .slide { position: relative; display: flex !important; width: 1600px; height: 900px; page-break-after: always; }
+    .chrome, #progress, .notes { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="deck">
+
+<!-- 1 -->
+<section class="slide title" data-bare>
+  <div class="eyebrow">Porto Tech Hub 2026</div>
+  <h1>Practical MCP Security<br>in Action</h1>
+  <div class="meta">Willem Jan Glerum<br><span class="muted">Principal Software Engineer, Lunatech</span></div>
+  <div><span class="where">Sofico track &nbsp;/&nbsp; Tue 10 Nov &nbsp;/&nbsp; 11:10 &nbsp;/&nbsp; Alfândega do Porto</span></div>
+  <div class="notes">Welcome. 50 minutes, three live demos, one Quarkus MCP server, now on the 2026-07-28 MCP spec.</div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="about">
+    <div class="photo">[PHOTO]</div>
+    <div>
+      <h2>Willem Jan Glerum</h2>
+      <p class="sub" style="margin-bottom:22px">Principal Software Engineer &nbsp;/&nbsp; Lunatech</p>
+      <p>Quarkus since the early days.</p>
+      <p>Cloud, open source, automation.</p>
+      <p>Quality code, simple and secure.</p>
+      <p class="muted" style="margin-top:22px">Weekends: volunteer @ scouts, nature, no keyboard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="eyebrow">The problem</div>
+  <div class="big">AI assistants need access<br>to your stuff.</div>
+  <h2 class="amber">Who decided they could?</h2>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="eyebrow">Model Context Protocol</div>
+  <h2>A protocol so AI clients can talk to tools, prompts and resources</h2>
+  <div class="flow" style="margin-top:30px">
+    <div class="node"><b>MCP Client</b><span>Lives inside the AI assistant.<br>Discovers and calls tools.</span></div>
+    <div class="arrow">JSON-RPC</div>
+    <div class="node hot"><b>MCP Server</b><span>Wraps your service.<br>Exposes tools, prompts, resources.</span></div>
+    <div class="arrow">REST</div>
+    <div class="node"><b>Your stuff</b><span>API, database, files,<br>whatever the AI needs.</span></div>
+  </div>
+  <p class="tagline">Today: <strong>how to put a lock on the middle box.</strong></p>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="eyebrow">Why MCP auth is hard</div>
+  <div class="big">MCP shipped with<br>no standard auth.</div>
+  <p class="sub">Every server rolled its own, until the 2025 spec.</p>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="eyebrow">Your auth options</div>
+  <h2>One server, many doors</h2>
+  <p class="sub" style="margin-bottom:20px">Same protocol, different guarantees.</p>
+  <table>
+    <tr><th>Approach</th><th>Identity</th><th>Revocable</th><th>Audit</th><th>Effort</th></tr>
+    <tr><td>Local stdio, no auth</td><td>None</td><td>n/a</td><td>None</td><td>Trivial</td></tr>
+    <tr><td>Static API key</td><td>Shared, not a user</td><td>Rotate key only</td><td>Weak</td><td>Low</td></tr>
+    <tr class="hl"><td>OAuth 2.1 + PKCE + CIMD / DCR</td><td>Real, per-user</td><td>Yes, per-token</td><td>Strong</td><td>Medium</td></tr>
+    <tr><td>Client credentials</td><td>Service, not user</td><td>Yes</td><td>Service-level</td><td>Low</td></tr>
+    <tr><td>+ mTLS / step-up</td><td>Real + assurance</td><td>Yes</td><td>Strong+</td><td>High</td></tr>
+  </table>
+  <p class="note">This talk takes the medium-effort path that gets you real identity, revocability and audit.</p>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="eyebrow">Three demos, three tiers</div>
+  <h2>Same Porto Tech Hub 2026 schedule, real Quarkus MCP server</h2>
+  <div class="cards cols-3" style="margin-top:26px">
+    <div class="card"><div class="label">Demo 1 &nbsp;/&nbsp; Public</div><h3>Browse the schedule</h3><p>OAuth 2.1 auth code + PKCE + CIMD / DCR</p></div>
+    <div class="card"><div class="label">Demo 2 &nbsp;/&nbsp; Personal</div><h3>My agenda, my ratings</h3><p>Token propagation, full audit</p></div>
+    <div class="card warn"><div class="label">Demo 3 &nbsp;/&nbsp; Sensitive</div><h3>Speaker-only actions</h3><p>Step-up authentication</p></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="eyebrow">Demo 1 setup</div>
+  <h2>One MCP client, one auth server, one Quarkus MCP server</h2>
+  <div class="flow" style="margin-top:30px">
+    <div class="node"><b>MCP Client</b><span>Claude / Inspector</span></div>
+    <div class="arrow">register</div>
+    <div class="node"><b>Auth Server</b><span>OAuth 2.1 · CIMD / DCR · PKCE</span></div>
+    <div class="arrow">token</div>
+    <div class="node hot"><b>Quarkus MCP</b><span>tools + bearer check</span></div>
+    <div class="arrow">read</div>
+    <div class="node"><b>PTH schedule</b><span>public data</span></div>
+  </div>
+  <p class="note">The client gets an identity, the user consents once (PKCE-protected), and a bearer token lets the AI read the public schedule.</p>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="eyebrow">Demo 1</div>
+  <h2>Browse the Porto Tech Hub schedule</h2>
+  <div class="steps" style="margin-top:22px">
+    <div class="stepline"><div class="num">1</div><div><h3>Register the MCP client</h3><p>CIMD or Dynamic Client Registration. The MCP client introduces itself to my auth server.</p></div></div>
+    <div class="stepline"><div class="num">2</div><div><h3>Log in</h3><p>OAuth 2.1 authorization code flow with PKCE. The user gives consent, once.</p></div></div>
+    <div class="stepline"><div class="num">3</div><div><h3>Ask the AI</h3><p>"What talks are happening right now?" The AI calls public tools with the bearer token.</p></div></div>
+  </div>
+  <p class="tagline">Watch the URL bar. <strong>The OAuth dance is short and unmysterious.</strong></p>
+</section>
+
+<!-- 10 -->
+<section class="slide center demo" data-bare>
+  <div class="tag">DEMO</div>
+  <h1>Browse the schedule</h1>
+  <p class="sub">Public access, OAuth 2.1, CIMD / DCR</p>
+  <div class="notes">Inspector at http://localhost:8081/mcp. 401 with resource_metadata, then PKCE login as attendee / attendee. Ask: "What's happening at Porto Tech Hub right now?" (demo clock: 11:40, Tue 10 Nov).</div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="eyebrow">What you just saw</div>
+  <h2>Three boring acronyms, one secure flow</h2>
+  <div class="cards cols-3" style="margin-top:26px">
+    <div class="card"><div class="label">CIMD / DCR</div><h3>Client identity</h3><p>Clients onboard themselves. No manual setup per MCP server.</p></div>
+    <div class="card"><div class="label">PKCE</div><h3>Proof Key for Code Exchange</h3><p>Stops stolen authorization codes from being usable.</p></div>
+    <div class="card"><div class="label">Auth Code</div><h3>Authorization Code Flow</h3><p>User consents in the browser. App never sees the password.</p></div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <div class="eyebrow">How clients register</div>
+  <h2>CIMD is the spec default since 2025-11-25</h2>
+  <table style="margin-top:12px">
+    <tr><th>Method</th><th>How it works</th><th>Trust anchor</th><th>Best for</th></tr>
+    <tr class="hl"><td>CIMD (spec default)</td><td>client_id is an HTTPS URL; server fetches the JSON metadata on demand</td><td>Domain ownership</td><td>Open ecosystems, clients you don't control</td></tr>
+    <tr><td>Dynamic Client Registration</td><td>Client POSTs metadata to /register, gets a per-server client ID</td><td>Anonymous / open endpoint</td><td>Controlled environments</td></tr>
+    <tr><td>Pre-registered / static</td><td>Admin creates the client ID + secret in the IdP ahead of time</td><td>Explicit, vetted</td><td>Fixed, known internal clients</td></tr>
+    <tr><td>Static API key</td><td>Shared key sent with each call; not a client identity</td><td>Possession of the key</td><td>Quick starts, scripts; avoid in production</td></tr>
+  </table>
+  <p class="note">CIMD is SHOULD, DCR is MAY. One URL beats a registration per server.</p>
+</section>
+
+<!-- 13 NEW -->
+<section class="slide">
+  <div class="eyebrow">New in the 2026-07-28 spec</div>
+  <h2>MCP goes stateless</h2>
+  <div class="cards cols-2" style="margin-top:22px">
+    <div class="card"><div class="label">Up to 2025-11-25</div><h3>Session-based</h3>
+      <ul><li><span class="mono">initialize</span> / <span class="mono">initialized</span> handshake</li><li>Server hands out an <span class="mono">Mcp-Session-Id</span></li><li>State lives on one server instance</li></ul></div>
+    <div class="card new"><div class="label">2026-07-28</div><h3>Stateless</h3>
+      <ul><li>Optional <span class="mono">server/discover</span>, no handshake</li><li>Every request is self-contained: <span class="mono">MCP-Protocol-Version</span>, <span class="mono">Mcp-Method</span>, client info in <span class="mono">_meta</span></li><li>No session id: any instance can answer</li></ul></div>
+  </div>
+  <p class="tagline">Auth does not change: <strong>every request still carries the bearer token and passes the same gate.</strong> Quarkus MCP Server 2.0 serves both on one endpoint.</p>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <div class="eyebrow">But wait...</div>
+  <div class="big" style="font-size:58px">“OAuth was designed for humans.<br>MCP needs zero trust.<br>Bearer tokens are not enough.”</div>
+  <p class="sub">a frequent objection in the MCP community</p>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <div class="eyebrow">Wrong question</div>
+  <h2>The token is the implementation detail.<br><span class="brand">Governance is the question.</span></h2>
+  <div class="cards cols-3" style="margin-top:26px">
+    <div class="card"><h3>Who?</h3><p>Authenticated identity, propagated.</p></div>
+    <div class="card"><h3>What?</h3><p>Scoped permissions, enforced server-side.</p></div>
+    <div class="card"><h3>Provable?</h3><p>Audited, replayable, attributable.</p></div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+  <div class="eyebrow">Enterprise reality</div>
+  <h2>The AI assistant is one piece of a bigger app</h2>
+  <div class="flow" style="margin-top:30px">
+    <div class="node"><b>User</b><span>logs in once</span></div>
+    <div class="arrow">token</div>
+    <div class="node"><b>Enterprise App</b><span>has user token</span></div>
+    <div class="arrow">token</div>
+    <div class="node hot"><b>MCP Server</b><span>tools</span></div>
+    <div class="arrow">token</div>
+    <div class="node"><b>Your API</b><span>enforces</span></div>
+  </div>
+  <p class="tagline">Token rides along. <strong>Identity survives every hop.</strong></p>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <div class="eyebrow">Demo 2</div>
+  <h2>My agenda, my ratings, my audit log</h2>
+  <div class="cards cols-3" style="margin-top:26px">
+    <div class="card"><h3>Bookmark a session</h3><p>AI tool call carries my identity.</p></div>
+    <div class="card"><h3>Rate a session</h3><p>Rating is stored under my user, not 'the AI'.</p></div>
+    <div class="card"><h3>Show me my conflicts</h3><p>Server enforces 'my' even though the AI asked.</p></div>
+  </div>
+  <p class="tagline">The punchline lives on <strong>the audit log screen.</strong></p>
+</section>
+
+<!-- 18 -->
+<section class="slide center demo" data-bare>
+  <div class="tag">DEMO</div>
+  <h1>My agenda, my audit</h1>
+  <p class="sub">Token propagation through every hop</p>
+  <div class="notes">Chat at http://localhost:8082/. "Bookmark the GraalVM talk for me" → "Show me my agenda" → "Also add the Practical MCP Security talk" → "Do I have any conflicts?" (both 11:10) → "Rate the MCP Security talk 5 stars with comment 'great use of caffeine'". Audit dashboard on screen two.</div>
+</section>
+
+<!-- 19 -->
+<section class="slide">
+  <div class="eyebrow">What you just saw</div>
+  <h2>It wasn’t the AI. It was me.</h2>
+  <div class="record" style="margin-top:18px">
+    <div class="head">audit_event</div>
+    <div><span class="k">action</span><span class="v">RATE_SESSION</span></div>
+    <div><span class="k">target</span><span class="v">session:1 (Practical MCP Security)</span></div>
+    <div><span class="k">attendee_subject</span><span class="id">willem.jan</span></div>
+    <div><span class="k">executed_by_client</span><span class="v">claude-desktop (registered via CIMD)</span></div>
+    <div><span class="k">token_iss</span><span class="v">https://auth.porto.demo/realms/porto</span></div>
+    <div><span class="k">created_at</span><span class="v">2026-11-10T11:41:14+00:00</span></div>
+  </div>
+  <p class="tagline">The AI didn’t rate the talk. I did. <strong>Auditable. Reversible. Attributable.</strong></p>
+</section>
+
+<!-- 20 -->
+<section class="slide">
+  <div class="eyebrow">Some tools need more than a login</div>
+  <h2>Step-up authentication</h2>
+  <p class="sub" style="margin-bottom:20px">Server-driven, mid-conversation.</p>
+  <div class="flow">
+    <div class="node"><b>Ask</b><span>View attendees</span></div>
+    <div class="arrow amber"></div>
+    <div class="node step"><b class="amber">Challenge</b><span>insufficient_user_authentication</span></div>
+    <div class="arrow amber"></div>
+    <div class="node step"><b>Re-auth</b><span>TOTP / MFA</span></div>
+    <div class="arrow"></div>
+    <div class="node hot"><b>Retry</b><span>Now allowed</span></div>
+  </div>
+  <p class="tagline">Server says: this tool needs MFA. <strong>Client re-authenticates. Done.</strong></p>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <div class="eyebrow">Demo 3</div>
+  <h2>Speaker-only tools and step-up</h2>
+  <div class="cards cols-2" style="margin-top:22px">
+    <div class="card"><div class="label">Normal speaker auth</div><ul><li>Read my session feedback</li><li>Update my speaker bio</li><li>Browse my Q&amp;A queue</li></ul></div>
+    <div class="card warn"><div class="label">Requires step-up</div><ul><li>View attendee list (GDPR)</li><li>Cancel my session</li><li>Export raw feedback</li></ul></div>
+  </div>
+  <p class="tagline">I will not actually cancel this talk while I'm giving it. <strong>Probably.</strong></p>
+</section>
+
+<!-- 22 -->
+<section class="slide center demo" data-bare>
+  <div class="tag">DEMO</div>
+  <h1>Step-up authentication</h1>
+  <p class="sub">Challenge, MFA, retry</p>
+  <div class="notes">Logged in as willem.jan (acr=1). "Show feedback on my sessions" → "Who signed up for my MCP Security talk?" → amber step-up card, popup at acr=urn:porto:mfa, TOTP → retry. Then "Cancel my MCP Security talk, reason is I want to go home early" and undo.</div>
+</section>
+
+<!-- 23 -->
+<section class="slide">
+  <div class="eyebrow">Step-up in one sentence</div>
+  <h2>The server, not the client,<br>decides when more proof is needed.</h2>
+  <div class="cards cols-3" style="margin-top:26px">
+    <div class="card"><h3>Mid-conversation</h3><p>No re-launch, no new flow.</p></div>
+    <div class="card"><h3>Server-policy-driven</h3><p>Tools say what they need.</p></div>
+    <div class="card"><h3>Same protocol</h3><p>Still OAuth 2.1. Stateless or not.</p></div>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide">
+  <div class="eyebrow">If you remember three things</div>
+  <div class="cards cols-3">
+    <div class="card"><h3 class="brand" style="font-size:34px">Who.</h3><p>Authenticated identity flows end to end. Not 'the AI did it'. Always a named user, propagated through every hop.</p></div>
+    <div class="card"><h3 class="brand" style="font-size:34px">What.</h3><p>Permissions are scoped and enforced at the server. The MCP tool is a thin door. The lock is yours.</p></div>
+    <div class="card"><h3 class="brand" style="font-size:34px">Provable.</h3><p>Every action is audited with the token claims that authorized it. Replayable. Reversible where it matters.</p></div>
+  </div>
+  <p class="tagline">Quarkus does the plumbing. <strong>You do the policy.</strong></p>
+</section>
+
+<!-- 25 -->
+<section class="slide" data-bare>
+  <div class="thanks">
+    <div>
+      <h1>Obrigado!</h1>
+      <p class="sub">Steal everything. Code, slides, all of it.</p>
+      <div class="links">
+        github.com/wjglerum/quarkus-mcp-porto-tech-hub-2026<br>
+        docs.quarkiverse.io/quarkus-mcp-server<br>
+        modelcontextprotocol.io/specification/2026-07-28
+      </div>
+      <p class="muted" style="margin-top:26px">Willem Jan Glerum &nbsp;/&nbsp; @wjglerum &nbsp;/&nbsp; Lunatech<br>Find me in the hallway. Coffee welcome.</p>
+    </div>
+    <div class="qr"><svg role="img" aria-label="QR code to the demo repository" version="1.1" viewBox="0 0 37 37" xmlns="http://www.w3.org/2000/svg"><path d="M2,2H3V3H2zM3,2H4V3H3zM4,2H5V3H4zM5,2H6V3H5zM6,2H7V3H6zM7,2H8V3H7zM8,2H9V3H8zM14,2H15V3H14zM17,2H18V3H17zM20,2H21V3H20zM21,2H22V3H21zM23,2H24V3H23zM24,2H25V3H24zM25,2H26V3H25zM28,2H29V3H28zM29,2H30V3H29zM30,2H31V3H30zM31,2H32V3H31zM32,2H33V3H32zM33,2H34V3H33zM34,2H35V3H34zM2,3H3V4H2zM8,3H9V4H8zM11,3H12V4H11zM12,3H13V4H12zM13,3H14V4H13zM17,3H18V4H17zM19,3H20V4H19zM20,3H21V4H20zM25,3H26V4H25zM26,3H27V4H26zM28,3H29V4H28zM34,3H35V4H34zM2,4H3V5H2zM4,4H5V5H4zM5,4H6V5H5zM6,4H7V5H6zM8,4H9V5H8zM11,4H12V5H11zM12,4H13V5H12zM13,4H14V5H13zM14,4H15V5H14zM16,4H17V5H16zM18,4H19V5H18zM19,4H20V5H19zM21,4H22V5H21zM25,4H26V5H25zM28,4H29V5H28zM30,4H31V5H30zM31,4H32V5H31zM32,4H33V5H32zM34,4H35V5H34zM2,5H3V6H2zM4,5H5V6H4zM5,5H6V6H5zM6,5H7V6H6zM8,5H9V6H8zM12,5H13V6H12zM14,5H15V6H14zM15,5H16V6H15zM17,5H18V6H17zM20,5H21V6H20zM22,5H23V6H22zM25,5H26V6H25zM28,5H29V6H28zM30,5H31V6H30zM31,5H32V6H31zM32,5H33V6H32zM34,5H35V6H34zM2,6H3V7H2zM4,6H5V7H4zM5,6H6V7H5zM6,6H7V7H6zM8,6H9V7H8zM11,6H12V7H11zM12,6H13V7H12zM14,6H15V7H14zM15,6H16V7H15zM18,6H19V7H18zM20,6H21V7H20zM25,6H26V7H25zM28,6H29V7H28zM30,6H31V7H30zM31,6H32V7H31zM32,6H33V7H32zM34,6H35V7H34zM2,7H3V8H2zM8,7H9V8H8zM10,7H11V8H10zM13,7H14V8H13zM14,7H15V8H14zM15,7H16V8H15zM19,7H20V8H19zM20,7H21V8H20zM21,7H22V8H21zM22,7H23V8H22zM28,7H29V8H28zM34,7H35V8H34zM2,8H3V9H2zM3,8H4V9H3zM4,8H5V9H4zM5,8H6V9H5zM6,8H7V9H6zM7,8H8V9H7zM8,8H9V9H8zM10,8H11V9H10zM12,8H13V9H12zM14,8H15V9H14zM16,8H17V9H16zM18,8H19V9H18zM20,8H21V9H20zM22,8H23V9H22zM24,8H25V9H24zM26,8H27V9H26zM28,8H29V9H28zM29,8H30V9H29zM30,8H31V9H30zM31,8H32V9H31zM32,8H33V9H32zM33,8H34V9H33zM34,8H35V9H34zM14,9H15V10H14zM16,9H17V10H16zM19,9H20V10H19zM20,9H21V10H20zM23,9H24V10H23zM24,9H25V10H24zM25,9H26V10H25zM26,9H27V10H26zM2,10H3V11H2zM5,10H6V11H5zM7,10H8V11H7zM8,10H9V11H8zM10,10H11V11H10zM11,10H12V11H11zM13,10H14V11H13zM15,10H16V11H15zM16,10H17V11H16zM17,10H18V11H17zM21,10H22V11H21zM23,10H24V11H23zM24,10H25V11H24zM25,10H26V11H25zM27,10H28V11H27zM29,10H30V11H29zM3,11H4V12H3zM4,11H5V12H4zM5,11H6V12H5zM6,11H7V12H6zM10,11H11V12H10zM11,11H12V12H11zM12,11H13V12H12zM14,11H15V12H14zM18,11H19V12H18zM19,11H20V12H19zM22,11H23V12H22zM26,11H27V12H26zM27,11H28V12H27zM28,11H29V12H28zM29,11H30V12H29zM34,11H35V12H34zM2,12H3V13H2zM4,12H5V13H4zM6,12H7V13H6zM8,12H9V13H8zM9,12H10V13H9zM10,12H11V13H10zM11,12H12V13H11zM14,12H15V13H14zM18,12H19V13H18zM19,12H20V13H19zM20,12H21V13H20zM21,12H22V13H21zM24,12H25V13H24zM26,12H27V13H26zM27,12H28V13H27zM28,12H29V13H28zM29,12H30V13H29zM30,12H31V13H30zM32,12H33V13H32zM34,12H35V13H34zM2,13H3V14H2zM3,13H4V14H3zM4,13H5V14H4zM6,13H7V14H6zM9,13H10V14H9zM12,13H13V14H12zM14,13H15V14H14zM16,13H17V14H16zM18,13H19V14H18zM23,13H24V14H23zM24,13H25V14H24zM27,13H28V14H27zM28,13H29V14H28zM30,13H31V14H30zM31,13H32V14H31zM2,14H3V15H2zM3,14H4V15H3zM4,14H5V15H4zM5,14H6V15H5zM7,14H8V15H7zM8,14H9V15H8zM9,14H10V15H9zM13,14H14V15H13zM14,14H15V15H14zM17,14H18V15H17zM18,14H19V15H18zM19,14H20V15H19zM20,14H21V15H20zM22,14H23V15H22zM23,14H24V15H23zM25,14H26V15H25zM28,14H29V15H28zM29,14H30V15H29zM31,14H32V15H31zM2,15H3V16H2zM3,15H4V16H3zM5,15H6V16H5zM6,15H7V16H6zM7,15H8V16H7zM9,15H10V16H9zM10,15H11V16H10zM11,15H12V16H11zM12,15H13V16H12zM17,15H18V16H17zM18,15H19V16H18zM21,15H22V16H21zM22,15H23V16H22zM26,15H27V16H26zM28,15H29V16H28zM30,15H31V16H30zM33,15H34V16H33zM34,15H35V16H34zM2,16H3V17H2zM3,16H4V17H3zM5,16H6V17H5zM6,16H7V17H6zM7,16H8V17H7zM8,16H9V17H8zM10,16H11V17H10zM12,16H13V17H12zM13,16H14V17H13zM14,16H15V17H14zM15,16H16V17H15zM18,16H19V17H18zM19,16H20V17H19zM22,16H23V17H22zM23,16H24V17H23zM25,16H26V17H25zM26,16H27V17H26zM27,16H28V17H27zM28,16H29V17H28zM29,16H30V17H29zM32,16H33V17H32zM33,16H34V17H33zM2,17H3V18H2zM4,17H5V18H4zM5,17H6V18H5zM7,17H8V18H7zM9,17H10V18H9zM12,17H13V18H12zM15,17H16V18H15zM16,17H17V18H16zM18,17H19V18H18zM19,17H20V18H19zM21,17H22V18H21zM22,17H23V18H22zM23,17H24V18H23zM28,17H29V18H28zM29,17H30V18H29zM33,17H34V18H33zM8,18H9V19H8zM9,18H10V19H9zM11,18H12V19H11zM19,18H20V19H19zM23,18H24V19H23zM24,18H25V19H24zM26,18H27V19H26zM28,18H29V19H28zM30,18H31V19H30zM31,18H32V19H31zM33,18H34V19H33zM2,19H3V20H2zM3,19H4V20H3zM4,19H5V20H4zM5,19H6V20H5zM7,19H8V20H7zM10,19H11V20H10zM12,19H13V20H12zM13,19H14V20H13zM14,19H15V20H14zM15,19H16V20H15zM16,19H17V20H16zM19,19H20V20H19zM23,19H24V20H23zM25,19H26V20H25zM26,19H27V20H26zM27,19H28V20H27zM29,19H30V20H29zM31,19H32V20H31zM33,19H34V20H33zM2,20H3V21H2zM4,20H5V21H4zM8,20H9V21H8zM9,20H10V21H9zM10,20H11V21H10zM11,20H12V21H11zM12,20H13V21H12zM13,20H14V21H13zM15,20H16V21H15zM26,20H27V21H26zM27,20H28V21H27zM32,20H33V21H32zM33,20H34V21H33zM34,20H35V21H34zM2,21H3V22H2zM3,21H4V22H3zM4,21H5V22H4zM5,21H6V22H5zM9,21H10V22H9zM17,21H18V22H17zM19,21H20V22H19zM20,21H21V22H20zM21,21H22V22H21zM22,21H23V22H22zM23,21H24V22H23zM24,21H25V22H24zM25,21H26V22H25zM26,21H27V22H26zM27,21H28V22H27zM29,21H30V22H29zM34,21H35V22H34zM3,22H4V23H3zM4,22H5V23H4zM5,22H6V23H5zM7,22H8V23H7zM8,22H9V23H8zM9,22H10V23H9zM10,22H11V23H10zM12,22H13V23H12zM13,22H14V23H13zM14,22H15V23H14zM16,22H17V23H16zM17,22H18V23H17zM20,22H21V23H20zM21,22H22V23H21zM23,22H24V23H23zM25,22H26V23H25zM27,22H28V23H27zM3,23H4V24H3zM4,23H5V24H4zM11,23H12V24H11zM13,23H14V24H13zM14,23H15V24H14zM15,23H16V24H15zM19,23H20V24H19zM20,23H21V24H20zM23,23H24V24H23zM26,23H27V24H26zM28,23H29V24H28zM31,23H32V24H31zM33,23H34V24H33zM34,23H35V24H34zM2,24H3V25H2zM3,24H4V25H3zM8,24H9V25H8zM12,24H13V25H12zM14,24H15V25H14zM21,24H22V25H21zM22,24H23V25H22zM23,24H24V25H23zM28,24H29V25H28zM29,24H30V25H29zM31,24H32V25H31zM34,24H35V25H34zM3,25H4V26H3zM4,25H5V26H4zM5,25H6V26H5zM6,25H7V26H6zM7,25H8V26H7zM10,25H11V26H10zM14,25H15V26H14zM15,25H16V26H15zM20,25H21V26H20zM21,25H22V26H21zM22,25H23V26H22zM23,25H24V26H23zM24,25H25V26H24zM25,25H26V26H25zM26,25H27V26H26zM30,25H31V26H30zM2,26H3V27H2zM4,26H5V27H4zM5,26H6V27H5zM8,26H9V27H8zM12,26H13V27H12zM13,26H14V27H13zM14,26H15V27H14zM16,26H17V27H16zM18,26H19V27H18zM19,26H20V27H19zM21,26H22V27H21zM22,26H23V27H22zM23,26H24V27H23zM25,26H26V27H25zM26,26H27V27H26zM27,26H28V27H27zM28,26H29V27H28zM29,26H30V27H29zM30,26H31V27H30zM10,27H11V28H10zM11,27H12V28H11zM12,27H13V28H12zM13,27H14V28H13zM15,27H16V28H15zM16,27H17V28H16zM19,27H20V28H19zM20,27H21V28H20zM21,27H22V28H21zM23,27H24V28H23zM24,27H25V28H24zM26,27H27V28H26zM30,27H31V28H30zM31,27H32V28H31zM33,27H34V28H33zM34,27H35V28H34zM2,28H3V29H2zM3,28H4V29H3zM4,28H5V29H4zM5,28H6V29H5zM6,28H7V29H6zM7,28H8V29H7zM8,28H9V29H8zM11,28H12V29H11zM12,28H13V29H12zM20,28H21V29H20zM22,28H23V29H22zM26,28H27V29H26zM28,28H29V29H28zM30,28H31V29H30zM31,28H32V29H31zM32,28H33V29H32zM33,28H34V29H33zM2,29H3V30H2zM8,29H9V30H8zM10,29H11V30H10zM14,29H15V30H14zM15,29H16V30H15zM17,29H18V30H17zM18,29H19V30H18zM19,29H20V30H19zM21,29H22V30H21zM22,29H23V30H22zM23,29H24V30H23zM24,29H25V30H24zM26,29H27V30H26zM30,29H31V30H30zM2,30H3V31H2zM4,30H5V31H4zM5,30H6V31H5zM6,30H7V31H6zM8,30H9V31H8zM11,30H12V31H11zM13,30H14V31H13zM18,30H19V31H18zM19,30H20V31H19zM20,30H21V31H20zM22,30H23V31H22zM23,30H24V31H23zM24,30H25V31H24zM26,30H27V31H26zM27,30H28V31H27zM28,30H29V31H28zM29,30H30V31H29zM30,30H31V31H30zM31,30H32V31H31zM33,30H34V31H33zM34,30H35V31H34zM2,31H3V32H2zM4,31H5V32H4zM5,31H6V32H5zM6,31H7V32H6zM8,31H9V32H8zM10,31H11V32H10zM11,31H12V32H11zM12,31H13V32H12zM14,31H15V32H14zM16,31H17V32H16zM20,31H21V32H20zM25,31H26V32H25zM28,31H29V32H28zM30,31H31V32H30zM31,31H32V32H31zM32,31H33V32H32zM2,32H3V33H2zM4,32H5V33H4zM5,32H6V33H5zM6,32H7V33H6zM8,32H9V33H8zM11,32H12V33H11zM13,32H14V33H13zM16,32H17V33H16zM18,32H19V33H18zM19,32H20V33H19zM20,32H21V33H20zM23,32H24V33H23zM30,32H31V33H30zM31,32H32V33H31zM32,32H33V33H32zM34,32H35V33H34zM2,33H3V34H2zM8,33H9V34H8zM11,33H12V34H11zM12,33H13V34H12zM13,33H14V34H13zM16,33H17V34H16zM17,33H18V34H17zM18,33H19V34H18zM19,33H20V34H19zM21,33H22V34H21zM23,33H24V34H23zM25,33H26V34H25zM26,33H27V34H26zM2,34H3V35H2zM3,34H4V35H3zM4,34H5V35H4zM5,34H6V35H5zM6,34H7V35H6zM7,34H8V35H7zM8,34H9V35H8zM10,34H11V35H10zM11,34H12V35H11zM14,34H15V35H14zM15,34H16V35H15zM23,34H24V35H23zM26,34H27V35H26zM30,34H31V35H30zM31,34H32V35H31zM33,34H34V35H33z" id="qr-path" fill="#000000" fill-opacity="1" fill-rule="nonzero" stroke="none" /></svg></div>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide">
+  <div class="eyebrow">Demo run-sheet (presenter)</div>
+  <p class="muted" style="font-size:19px">Fallback for Demos 2 &amp; 3 (~6 min each). If anything breaks: play the recording / screenshots. Don't troubleshoot live.</p>
+  <div class="cards cols-2" style="margin-top:12px">
+    <div class="card"><div class="label">Demo 2 / Personal</div>
+      <ul><li>Bookmark the GraalVM talk; show my agenda.</li><li>Add the MCP Security talk; ask for conflicts (both 11:10).</li><li>Rate the MCP talk; open the AUDIT LOG.</li><li>Point to: action, attendee_subject, executed_by_client, token_iss.</li></ul></div>
+    <div class="card warn"><div class="label">Demo 3 / Sensitive</div>
+      <ul><li>Ask who signed up for my talk: step-up required.</li><li>TOTP challenge (<span class="mono">urn:porto:mfa</span>); complete it.</li><li>Re-issued token carries the elevated acr.</li><li>Cancel and undo; show the red audit events.</li></ul></div>
+  </div>
+</section>
+
+</div>
+
+<div class="chrome"><span>Practical MCP Security in Action &nbsp;/&nbsp; Porto Tech Hub 2026</span><span id="counter"></span></div>
+<div id="progress"></div>
+
+<script>
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i = 0;
+  var counter = document.getElementById('counter');
+  var progress = document.getElementById('progress');
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, idx) { s.classList.toggle('active', idx === i); });
+    document.body.classList.toggle('bare', slides[i].hasAttribute('data-bare'));
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    progress.style.width = (i / (slides.length - 1) * 100) + '%';
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { show(i + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault(); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(slides.length - 1); }
+    else if (e.key === 'n' || e.key === 'N') { document.body.classList.toggle('show-notes'); }
+  });
+  document.addEventListener('click', function () { show(i + 1); });
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+</script>
+</body>
+</html>

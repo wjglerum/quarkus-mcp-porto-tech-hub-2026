@@ -1,9 +1,9 @@
-# jPrime 2026 Conference Companion: MCP Demo Spec
+# Porto Tech Hub 2026 Conference Companion: MCP Demo Spec
 
 ## Talk context
 
-- **Event**: jPrime 2026, Sofia Tech Park, 3-4 June 2026
-- **Session**: "Practical MCP Security in Action", Hall B, day 1, 10:00 to 10:50
+- **Event**: Porto Tech Hub 2026, Alfândega do Porto, 10 November 2026
+- **Session**: "Practical MCP Security in Action", Sofico track, 11:10 to 12:00 (WET)
 - **Speaker**: Willem Jan Glerum (Lunatech)
 - **Audience level**: BEGINNER
 - **Slot**: 50 minutes total, including 3 live demos
@@ -13,7 +13,7 @@
 
 A self-contained build spec for the demo. A fresh agent should be able to read this file and rebuild the whole stack without referring to the original conversation. It defines three Quarkus applications:
 
-1. **conference-api**: stores the jPrime schedule, attendee data, ratings, and audit log. Exposes REST endpoints under `/api/v1/` and serves the second-screen audit dashboard at `/audit-live/`.
+1. **conference-api**: stores the Porto Tech Hub schedule, attendee data, ratings, and audit log. Exposes REST endpoints under `/api/v1/` and serves the second-screen audit dashboard at `/audit-live/`.
 2. **conference-mcp**: Quarkus MCP server. Thin protocol adapter that exposes tools to AI clients, secured with OAuth 2.1 and token propagation to conference-api.
 3. **conference-chat**: AI chat interface for the live demo. Logs the speaker in via OIDC web-app flow, lets the user (or a swappable LLM) call MCP tools through `conference-mcp`, and renders tool calls in a deck-styled UI.
 
@@ -90,8 +90,8 @@ Keep it simple. Six tables, no enums, no join tables, no live import. **No Flywa
 - id (long, pk)
 - title (string)
 - abstract_text (text)
-- room (string, plain text -- eg "Hall A", "Hall B", "Workshop Room")
-- starts_at (timestamp with timezone, Europe/Sofia)
+- room (string, plain text -- eg "PTH Main track", "Sofico track", "DKV Workshop track I")
+- starts_at (timestamp with timezone, Europe/Lisbon)
 - ends_at (timestamp with timezone)
 - speaker_id (fk to Speaker; **one speaker per session**)
 - cancelled (boolean, default false; toggle for demo 3)
@@ -149,9 +149,9 @@ Explicitly rejected to keep the demo lean:
 
 ## Data ingestion
 
-Two seeders, both idempotent, both applied on startup. **No live jprime.io scrape at runtime, no jsoup dependency.** The demo never depends on the internet for schedule data.
+Two seeders, both idempotent, both applied on startup. **No live portotechhub.com scrape at runtime, no jsoup dependency.** The demo never depends on the internet for schedule data.
 
-1. **Static schedule seeder**: if `Session.count() == 0`, load `seed/jprime-2026-agenda.json` from the classpath and persist every speaker and session listed there. The JSON is a one-time **snapshot of the real jprime.io agenda** for jPrime 2026 (3-4 June, Sofia Tech Park): ~32 talks across two days, ~27 speakers, including Willem Jan on the MCP talk (Hall B, day 1 10:00) and on the Concurrency Crossroads deep dive (Workshops & Deep Dives, day 1 15:20). Breaks, registration, raffle, and networking blocks are excluded -- only sessions with a speaker. Co-speakers are reduced to the primary speaker to fit the one-speaker-per-session model. Refreshing the schedule is a manual step: re-scrape jprime.io and overwrite the JSON.
+1. **Static schedule seeder**: if `Session.count() == 0`, load `seed/porto-tech-hub-2026-agenda.json` from the classpath and persist every speaker and session listed there. The JSON is a one-time **snapshot of the real porto.io agenda** for Porto Tech Hub 2026 (3-4 June, Sofia Tech Park): ~32 talks across two days, ~27 speakers, including Willem Jan on the MCP talk (Hall B, day 1 10:00) and on the Concurrency Crossroads deep dive (Workshops & Deep Dives, day 1 15:20). Breaks, registration, raffle, and networking blocks are excluded -- only sessions with a speaker. Co-speakers are reduced to the primary speaker to fit the one-speaker-per-session model. Refreshing the schedule is a manual step: re-scrape porto.io and overwrite the JSON.
 2. **Demo data seeder**: if `Attendee.count() == 0`, create about 10 fake attendees, around 15 bookmarks, and around 25 ratings, with at least 5 ratings on Willem Jan's sessions for the speaker feedback demo.
 
 The JSON shape is:
@@ -159,7 +159,7 @@ The JSON shape is:
 ```json
 {
   "year": 2026,
-  "timezone": "Europe/Sofia",
+  "timezone": "Europe/Lisbon",
   "speakers": [
     { "name": "Willem Jan Glerum", "bio": "..." }
   ],
@@ -168,9 +168,9 @@ The JSON shape is:
       "title": "Practical MCP Security in Action",
       "abstract": "optional; falls back to title when missing",
       "speaker": "Willem Jan Glerum",
-      "room": "Hall B",
-      "startsAt": "2026-06-03T10:00:00+03:00",
-      "endsAt":   "2026-06-03T10:50:00+03:00"
+      "room": "Sofico track",
+      "startsAt": "2026-11-10T11:10:00+00:00",
+      "endsAt":   "2026-11-10T12:00:00+00:00"
     }
   ]
 }
@@ -206,8 +206,8 @@ All endpoints under `/api/v1/`. JSON in, JSON out. OpenAPI generated. Small surf
 ### Speaker (role `speaker`)
 - `GET /me/sessions/feedback` -- aggregate + individual ratings on my sessions.
 
-### Speaker, step-up required (acr=`urn:jprime:mfa`)
-- `GET /sessions/{id}/attendees` -- display names of attendees who bookmarked the session. Returns 401 with `WWW-Authenticate: Bearer error="insufficient_user_authentication", acr_values="urn:jprime:mfa"` if step-up not satisfied. 403 if caller is not the speaker on the session (audited as `CANCEL_SESSION_ATTEMPTED`).
+### Speaker, step-up required (acr=`urn:porto:mfa`)
+- `GET /sessions/{id}/attendees` -- display names of attendees who bookmarked the session. Returns 401 with `WWW-Authenticate: Bearer error="insufficient_user_authentication", acr_values="urn:porto:mfa"` if step-up not satisfied. 403 if caller is not the speaker on the session (audited as `CANCEL_SESSION_ATTEMPTED`).
 - `POST /sessions/{id}/cancel` -- body `{ "reason": "..." }`. Reversible toggle. Audited as `CANCEL_SESSION` / `CANCEL_SESSION_UNDONE`.
 
 No admin reseed endpoint. Resetting demo state is a Dev Services container restart (see "Data ingestion").
@@ -216,7 +216,7 @@ No admin reseed endpoint. Resetting demo state is a Dev Services container resta
 
 ## /audit-live/ dashboard (conference-api)
 
-The second-screen UI that lands every audit event in real time. **Served by a Qute template via a public JAX-RS resource**, mirroring the conference-chat pattern: a `nl.lunatech.jprime.api.web.AuditLivePageResource` (`@Path("/audit-live")`, `@PermitAll`) with a `@CheckedTemplate` interface renders `templates/AuditLivePageResource/audit.html`. Vanilla JS under `META-INF/resources/audit.js` polls `GET /api/v1/audit/recent?limit=30` every 2 seconds and appends cards in the slide-14 struct layout (action / target / attendee_subject / token_acr / token_amr / detail). The Qute template emits the shell (top bar, hero, empty state, `<template>` element for cards) and any seed data known at request time.
+The second-screen UI that lands every audit event in real time. **Served by a Qute template via a public JAX-RS resource**, mirroring the conference-chat pattern: a `nl.lunatech.porto.api.web.AuditLivePageResource` (`@Path("/audit-live")`, `@PermitAll`) with a `@CheckedTemplate` interface renders `templates/AuditLivePageResource/audit.html`. Vanilla JS under `META-INF/resources/audit.js` polls `GET /api/v1/audit/recent?limit=30` every 2 seconds and appends cards in the slide-14 struct layout (action / target / attendee_subject / token_acr / token_amr / detail). The Qute template emits the shell (top bar, hero, empty state, `<template>` element for cards) and any seed data known at request time.
 
 conference-api therefore lists `quarkus-qute` and `quarkus-rest-qute` in its extensions.
 
@@ -272,10 +272,10 @@ public class StepUp {
     public void require() {
         Object acr = jwt.getClaim("acr");
         if ("2".equals(String.valueOf(acr))
-                || "urn:jprime:mfa".equals(String.valueOf(acr))) return;
+                || "urn:porto:mfa".equals(String.valueOf(acr))) return;
         throw new ToolCallException(
                 "insufficient_user_authentication: this tool requires step-up MFA. "
-                        + "Re-authenticate with acr_values=urn:jprime:mfa and retry.");
+                        + "Re-authenticate with acr_values=urn:porto:mfa and retry.");
     }
 }
 ```
@@ -355,7 +355,7 @@ Both SPAs (the chat shell and the audit-live dashboard) are rendered server-side
 - `GET /` -- serves `chat.html`. Authenticated; redirects to Keycloak when unauthenticated.
 - `GET /chat.css`, `GET /chat.js`, `GET /favicon.ico` -- public assets.
 
-The `/api/*` endpoints are authenticated but must return **HTTP 401 anonymously** rather than a login redirect, so programmatic callers and the acceptance check get a clean status while the browser page `/` still redirects. Plain `web-app` OIDC redirects every unauthenticated request. To split the behavior, register an `@Alternative @Priority(1)` `HttpAuthenticationMechanism` (`nl.lunatech.jprime.chat.security.ApiAwareAuthMechanism`) that delegates to `OidcAuthenticationMechanism` for everything, but overrides `getChallenge` to return `ChallengeData(401, null, null)` when the path starts with `/api/`. The OIDC code flow (callback, PKCE, state) is untouched because `authenticate` delegates fully.
+The `/api/*` endpoints are authenticated but must return **HTTP 401 anonymously** rather than a login redirect, so programmatic callers and the acceptance check get a clean status while the browser page `/` still redirects. Plain `web-app` OIDC redirects every unauthenticated request. To split the behavior, register an `@Alternative @Priority(1)` `HttpAuthenticationMechanism` (`nl.lunatech.porto.chat.security.ApiAwareAuthMechanism`) that delegates to `OidcAuthenticationMechanism` for everything, but overrides `getChallenge` to return `ChallengeData(401, null, null)` when the path starts with `/api/`. The OIDC code flow (callback, PKCE, state) is untouched because `authenticate` delegates fully.
 - `GET /q/*` -- public (Dev UI, health, OIDC callback).
 - `GET /api/chat/me` -- returns the current user's `subject`, `name`, `roles`, `acr`, `amr`, and a `provider`/`llmAvailable` hint for the UI.
 - `GET /api/chat/quick-prompts` -- list of demo-ready prompts with their suggested tool and tier (`public`, `attendee`, `speaker`, `step-up`).
@@ -370,13 +370,13 @@ Pinned in the sidebar, drive the three demos. Each carries a `tier` so the UI ca
 1. "What's happening right now?" -- `whats_on_now`, public.
 2. "What's coming up next?" -- `whats_next`, public.
 3. "Find the Practical MCP talk" -- `list_sessions`, public.
-4. "Bookmark the JSpecify talk for me" -- `bookmark_session`, attendee.
+4. "Bookmark the GraalVM talk for me" -- `bookmark_session`, attendee.
 5. "Show me my agenda" -- `my_agenda`, attendee.
 6. "Do I have any conflicts?" -- `my_conflicts`, attendee.
 7. "Rate the MCP Security talk 5 stars with comment 'great use of caffeine'" -- `rate_session`, attendee.
 8. "Show feedback on my sessions" -- `my_session_feedback`, speaker.
-9. "Who signed up for my Concurrency Crossroads deep dive?" -- `view_session_attendees`, step-up.
-10. "Cancel my deep dive, reason is I want to go home early" -- `cancel_my_session`, step-up.
+9. "Who signed up for my MCP Security talk?" -- `view_session_attendees`, step-up.
+10. "Cancel my MCP Security talk, reason is I want to go home early" -- `cancel_my_session`, step-up.
 
 ### Scripted intent matcher
 
@@ -410,7 +410,7 @@ A LangChain4j `AiService` with the MCP tool provider attached. System prompt is 
 
 ### Keycloak setup
 
-- Realm: `jprime`
+- Realm: `porto`
 - Clients (all confidential except where noted):
   - `conference-api` -- bearer-only, audience `conference-api`.
   - `conference-mcp` -- confidential, used for service-to-service calls and as the OIDC client for the Dev UI login on port 8081. **PKCE method `S256` required on the auth code flow.** Token exchange enabled.
@@ -419,13 +419,13 @@ A LangChain4j `AiService` with the MCP tool provider attached. System prompt is 
 - **Realm roles vs client scopes**: `attendee` and `speaker` are realm **roles**, not client scopes. The realm ships no custom `attendee` / `speaker` client scopes; the roles ride into the access token via the realm-default `roles` scope and surface at the JWT path `realm_access/roles`. None of the three apps may set `quarkus.oidc.authentication.scopes=attendee,speaker` (or any other non-existent scope) -- Keycloak rejects the auth request with `Invalid scopes`. The only OIDC scope-related config that should appear is `quarkus.oidc.roles.role-claim-path=realm_access/roles` on each app. The realm's `realm roles` mapper writes `realm_access.roles` into the **access token only** (not the ID token). conference-api and conference-mcp run in `service` mode, so they read roles from the access token by default. conference-chat runs in `web-app` mode, where roles default to the ID token, so it must also set `quarkus.oidc.roles.source=accesstoken`; otherwise `SecurityIdentity.getRoles()` is empty and the identity panel shows no roles. Read roles from `SecurityIdentity.getRoles()`, not `JsonWebToken.getGroups()` (the latter reads the token `groups` claim, which the realm does not populate).
 - Users (seeded in the realm export):
   - `attendee` / `attendee` -- role `attendee`.
-  - `willem.jan` / `willem.jan` -- roles `attendee` + `speaker`, linked to the Willem Jan speaker fixture. TOTP-enrolled in the seeded realm (secret `jprimemcp2026stepupseed`).
+  - `willem.jan` / `willem.jan` -- roles `attendee` + `speaker`, linked to the Willem Jan speaker fixture. TOTP-enrolled in the seeded realm (secret `portomcp2026stepupseed`).
   - `admin-demo` / `admin` -- roles `attendee` + `speaker`, full demo operator account. TOTP-enrolled with the same seeded secret.
-- Authentication flow: the realm ships a custom `Browser Stepup` browser flow with two conditional Level-of-Assurance subflows (password at LoA 1, OTP at LoA 2, `loa-max-age` 300s on LoA 2) and the `acr.loa.map` entry `urn:jprime:mfa` -> level 2. The step-up demo surfaces as a 401 + `WWW-Authenticate: Bearer error=insufficient_user_authentication, acr_values=urn:jprime:mfa` from `conference-api` and a `ToolCallException("insufficient_user_authentication: ...")` from `conference-mcp`.
+- Authentication flow: the realm ships a custom `Browser Stepup` browser flow with two conditional Level-of-Assurance subflows (password at LoA 1, OTP at LoA 2, `loa-max-age` 300s on LoA 2) and the `acr.loa.map` entry `urn:porto:mfa` -> level 2. The step-up demo surfaces as a 401 + `WWW-Authenticate: Bearer error=insufficient_user_authentication, acr_values=urn:porto:mfa` from `conference-api` and a `ToolCallException("insufficient_user_authentication: ...")` from `conference-mcp`.
 - Token exchange is **not** enabled. No client uses service-account or direct-access grants.
 - Realm `frontendUrl` is **not** hardcoded. Dev Services maps Keycloak to a dynamic port; if `frontendUrl` is hardcoded, OIDC discovery breaks.
 
-Quarkus Dev Services boots Keycloak with this realm. All three apps configure the same `service-name=jprime-keycloak` and `shared=true` so they share a single container. Keep the three apps on the same Quarkus platform version (run `quarkus update` if drift creeps in); a mismatched Quarkus version is the only way `shared=true` ends up spawning two containers because each Quarkus release pins a different default Keycloak image.
+Quarkus Dev Services boots Keycloak with this realm. All three apps configure the same `service-name=porto-keycloak` and `shared=true` so they share a single container. Keep the three apps on the same Quarkus platform version (run `quarkus update` if drift creeps in); a mismatched Quarkus version is the only way `shared=true` ends up spawning two containers because each Quarkus release pins a different default Keycloak image.
 
 ### Single canonical realm file
 
@@ -435,7 +435,7 @@ The realm was derived from Dev Services' default `quarkus` realm so it ships the
 
 - Leave `defaultClientScopes` empty on each app client so the realm-level defaults apply; overriding with a short list strips `basic` and kills the `sub` claim.
 - Do not hardcode `frontendUrl`; Dev Services maps Keycloak to a random host port.
-- `acr.loa.map` keys are ACR strings, values are integer-as-string levels (`"urn:jprime:mfa": "2"`).
+- `acr.loa.map` keys are ACR strings, values are integer-as-string levels (`"urn:porto:mfa": "2"`).
 
 ### Quarkus security config
 
@@ -455,13 +455,13 @@ The realm was derived from Dev Services' default `quarkus` realm so it ships the
 
 ### Reading JWT claims safely
 
-`JsonWebToken.getClaim(name)` returns a generic `<T>` that the compiler infers from context, which makes `String.valueOf(jwt.getClaim(name))` resolve to `String.valueOf(char[])` and blow up at runtime. Always assign the result to an explicit `Object` first, or use the `JwtClaims` helper at `conference-chat/src/main/java/nl/lunatech/jprime/chat/security/JwtClaims.java` which wraps the `Optional`-returning `claim()` overload.
+`JsonWebToken.getClaim(name)` returns a generic `<T>` that the compiler infers from context, which makes `String.valueOf(jwt.getClaim(name))` resolve to `String.valueOf(char[])` and blow up at runtime. Always assign the result to an explicit `Object` first, or use the `JwtClaims` helper at `conference-chat/src/main/java/nl/lunatech/porto/chat/security/JwtClaims.java` which wraps the `Optional`-returning `claim()` overload.
 
 ### Required ACR check
 
-Step-up tools look for `acr=urn:jprime:mfa` or `acr=2`. On insufficiency:
+Step-up tools look for `acr=urn:porto:mfa` or `acr=2`. On insufficiency:
 
-- conference-api returns 401 with `WWW-Authenticate: Bearer error="insufficient_user_authentication", acr_values="urn:jprime:mfa"`.
+- conference-api returns 401 with `WWW-Authenticate: Bearer error="insufficient_user_authentication", acr_values="urn:porto:mfa"`.
 - conference-mcp surfaces a `ToolCallException` whose message starts with `insufficient_user_authentication:` so the chat client can recognise it and offer the re-auth path.
 - conference-chat shows an amber step-up card with instructions to re-login at a higher ACR.
 
@@ -472,7 +472,7 @@ Step-up tools look for `acr=urn:jprime:mfa` or `acr=2`. On insufficiency:
 Lifted from `practical-mcp-security.pptx`. The audit dashboard and chat UI both:
 
 - Use the dark palette in the table above.
-- Render a small shield SVG in the top bar with the brand title "Practical MCP Security in Action / jPrime 2026".
+- Render a small shield SVG in the top bar with the brand title "Practical MCP Security in Action / Porto Tech Hub 2026".
 - Format tool calls / audit events as monospace struct cards with key/value rows in two columns.
 - Use a pulsing green dot to indicate "live".
 - Use the slide 14 pull quote "It wasn't the AI. It was me." as the chat hero subtitle and as the audit dashboard hero.
@@ -498,7 +498,7 @@ The audit dashboard stays mostly quiet (read-only tools do not audit).
 ### Demo 2: Personal agenda with token propagation (~10 min)
 
 1. Log in (or re-login) as `willem.jan / willem.jan`.
-2. Click "Bookmark the JSpecify talk for me". A blue `BOOKMARK_ADD` event flies onto `/audit-live/` within 2 seconds.
+2. Click "Bookmark the GraalVM talk for me". A blue `BOOKMARK_ADD` event flies onto `/audit-live/` within 2 seconds.
 3. Click "Show me my agenda".
 4. Click "Do I have any conflicts?" after bookmarking a second overlapping session.
 5. Click "Rate the MCP Security talk 5 stars with comment 'great use of caffeine'". A `RATE_SESSION` event appears with `attendee_subject=willem.jan` and `token_acr=1`.
@@ -510,9 +510,9 @@ Punchline: not "AI rated it 5 stars" but "Willem Jan rated it 5 stars, executed 
 
 1. Stay as `willem.jan`, no MFA yet (`acr=1`).
 2. Click "Show feedback on my sessions". Works.
-3. Click "Who signed up for my Concurrency Crossroads deep dive?". The MCP tool returns `insufficient_user_authentication`. The chat UI shows an amber step-up card with the next step.
-4. Log out and back in, this time satisfying TOTP. `acr=urn:jprime:mfa`. Retry the prompt. The attendee list comes back.
-5. Click "Cancel my deep dive, reason is I want to go home early". The chat UI shows a red destructive card. The audit log shows `CANCEL_SESSION` with the strong acr.
+3. Click "Who signed up for my MCP Security talk?". The MCP tool returns `insufficient_user_authentication`. The chat UI shows an amber step-up card with the next step.
+4. Log out and back in, this time satisfying TOTP. `acr=urn:porto:mfa`. Retry the prompt. The attendee list comes back.
+5. Click "Cancel my MCP Security talk, reason is I want to go home early". The chat UI shows a red destructive card. The audit log shows `CANCEL_SESSION` with the strong acr.
 6. Click the prompt again to reverse the cancellation, showing the toggle behavior and that the action is reversible. Audit log shows `CANCEL_SESSION_UNDONE`.
 
 Talking points: step-up is the spec-level answer to "OAuth is for humans". Same protocol, different acr requirement, server-driven.
@@ -521,7 +521,7 @@ Talking points: step-up is the spec-level answer to "OAuth is for humans". Same 
 
 - Pre-recorded video of each demo at 1.5x speed, on a fallback browser tab.
 - All demos work offline against the seeded database. No external dependency at demo time except optional LLM providers; the scripted mode is always available.
-- Seed data includes a "well-known" current time override (env var `DEMO_NOW=2026-06-03T10:45:00+03:00`) so `whats_on_now` always returns something interesting regardless of when the talk is rehearsed.
+- Seed data includes a "well-known" current time override (env var `DEMO_NOW=2026-11-10T11:40:00+00:00`) so `whats_on_now` always returns something interesting regardless of when the talk is rehearsed.
 - The LLM provider switcher in the chat UI lets the speaker hot-swap from Anthropic to Ollama if the venue blocks outbound traffic.
 
 ---
@@ -535,9 +535,9 @@ Talking points: step-up is the spec-level answer to "OAuth is for humans". Same 
 - **Tests**: JUnit 5, REST Assured, Quarkus Dev Services (Testcontainers for Postgres, Keycloak Dev Services for OIDC). Tests disable OIDC with `%test.quarkus.oidc.tenant-enabled=false` so they use `@TestSecurity`.
 - **Code style**: no em dashes in any generated text, comments, or documentation.
 - **DTOs**: each REST/MCP DTO is a **top-level class (or record) in its own file**, inside a dedicated `dto` package per app:
-  - conference-api: `nl.lunatech.jprime.api.dto`
-  - conference-mcp: `nl.lunatech.jprime.mcp.dto`
-  - conference-chat: `nl.lunatech.jprime.chat.dto`
+  - conference-api: `nl.lunatech.porto.api.dto`
+  - conference-mcp: `nl.lunatech.porto.mcp.dto`
+  - conference-chat: `nl.lunatech.porto.chat.dto`
   Do not nest DTOs as inner classes under a `Dtos` umbrella holder. One file per DTO. Static `of(Entity)` factory methods stay on the DTO itself.
 - **Repo layout**: monorepo with `conference-api/`, `conference-mcp/`, `conference-chat/`, a thin aggregator `pom.xml` at the root (lists the three apps as `<modules>` so `./mvnw verify` from the root builds and tests everything), `keycloak-realm.json` (the single shared realm export), `SPEC.md`, `RUNBOOK.md`. **No** `infra/` directory and **no** `DEMO_RESET.sh`; everything is auto-provisioned by Dev Services, and resetting state is a Dev Services container restart. The realm file lives once at the monorepo root and is referenced by all three apps via `quarkus.keycloak.devservices.realm-path=../keycloak-realm.json`. The aggregator pom adds no dependencyManagement; each child stays self-contained on its own Quarkus / Quarkiverse BOMs.
 
@@ -578,7 +578,7 @@ No Flyway. Hibernate owns the schema in dev and test (`drop-and-create`). In pro
 
 | Env var | Purpose | Default |
 |---------|---------|---------|
-| `DEMO_NOW` | Override the demo clock used by `whats_on_now`/`whats_next` and the rating cutoff. ISO with `+03:00` zone. In `%dev` the default is **`2026-06-03T10:45:00+03:00`** (mid-demo Wednesday morning) so ratings work without env setup. Override only when rehearsing other times. | `2026-06-03T10:45:00+03:00` in dev, unset elsewhere |
+| `DEMO_NOW` | Override the demo clock used by `whats_on_now`/`whats_next` and the rating cutoff. ISO with `+00:00` zone (WET). In `%dev` the default is **`2026-11-10T11:40:00+00:00`** (mid-demo Wednesday morning) so ratings work without env setup. Override only when rehearsing other times. | `2026-11-10T11:40:00+00:00` in dev, unset elsewhere |
 | `CONFERENCE_API_URL` | Where conference-mcp / conference-chat find conference-api. | `http://localhost:8080` |
 | `CONFERENCE_MCP_URL` | Where conference-chat finds the MCP endpoint (streamable HTTP). | `http://localhost:8081/mcp` |
 | `ANTHROPIC_API_KEY` | Anthropic provider key. | unset (provider disabled) |
@@ -712,7 +712,7 @@ The single source of design truth is `practical-mcp-security.pdf` (and the under
 ### Recurring motifs lifted from the deck
 
 - **Vertical brand-blue stripe** down the left edge of slide 1 (about 12px wide, full height). Echoes the talk's identity. Apply as a fixed 8 to 10px stripe on the chat client's left edge and on the audit dashboard's hero.
-- **Footer bar** on most slides: small muted text, format `Practical MCP Security in Action  /  jPrime 2026` left-aligned, `N / 20` right-aligned, color `--fg-dim` (`#5F6B7A`), monospace. Both SPAs reuse the left-half text; the right-half becomes the app name (`conference-chat` or `conference-api`) and the active mode or event count.
+- **Footer bar** on most slides: small muted text, format `Practical MCP Security in Action  /  Porto Tech Hub 2026` left-aligned, `N / 20` right-aligned, color `--fg-dim` (`#5F6B7A`), monospace. Both SPAs reuse the left-half text; the right-half becomes the app name (`conference-chat` or `conference-api`) and the active mode or event count.
 - **DEMO transition slides** are full-bleed colored (brand blue for demos 1 and 2, amber for demo 3). The chat's mode toggle should echo this: scripted mode pill is blue, llm mode pill is amber.
 - **Slide 5 tier legend**: three side-by-side cards with a 4px colored top stripe -- blue for Demo 1 (public), blue for Demo 2 (personal), amber for Demo 3 (sensitive). This is the **canonical tier color legend**. Quick-prompt buttons must use these top-stripe colors (blue for public/attendee/speaker, amber for step-up).
 - **Slide 9 pull quote**: dark card with a 4px amber left border, italic muted caption underneath ("a frequent objection in the MCP community" style). Reuse for step-up error cards.
@@ -744,8 +744,8 @@ This is the gold-standard layout. Slide 14 shows it; the chat tool cards and the
 | target               session:253 (Practical MCP Security)
 | attendee_subject     willem.jan                        |  <- value in --amber for identity
 | executed_by_client   claude-desktop (registered via DCR)
-| token_iss            http://localhost:.../realms/jprime
-| created_at           2026-06-03T10:46:14+03:00         |
+| token_iss            http://localhost:.../realms/porto
+| created_at           2026-11-10T11:41:14+00:00         |
 +--------------------------------------------------------+
 
    The AI didn't rate the talk. I did. Auditable. Reversible. Attributable.   <- italic --brand caption below
@@ -766,7 +766,7 @@ The chat client renders **two cards per tool call**: one labeled `mcp.tool_call`
 **Chat top bar (port 8082)**
 - 8px brand-blue vertical stripe along the absolute left edge of the page.
 - Top bar `--surface` background, 56px tall, 28px horizontal padding.
-- Left: shield SVG (18 to 20px, fill `--brand`), then `Practical MCP Security in Action` bold white, ` / ` muted, `jPrime 2026 Conference Companion` muted.
+- Left: shield SVG (18 to 20px, fill `--brand`), then `Practical MCP Security in Action` bold white, ` / ` muted, `Porto Tech Hub 2026 Conference Companion` muted.
 - Right: green pulsing dot, the logged-in name in `--amber`, separator, mode pill (`scripted` blue or `llm` amber), separator, provider pill (`anthropic` / `openai` / `ollama` / `bedrock` in the brand text color of the active provider).
 
 **Chat sidebar**
@@ -828,7 +828,7 @@ A subagent or polish pass that diverges from any of the above must justify the d
 
 - **All three apps on the same Quarkus version.** Mixed platforms cause subtle wiring drift, including silently spawning two Keycloak containers because each Quarkus release ships a different default Keycloak image. Run `quarkus update` if drift creeps in.
 - **Restart the apps after rebuilding the realm.** OIDC caches the issuer URL on first discovery; if Keycloak comes back on a different port, the running apps return 401 on every token until restarted.
-- **Pin `demo.now`** in dev so the rating cutoff and `whats_on_now` are deterministic. Without it, the wall clock reads "today" and every seeded 2026-06-03 session looks future-dated, so `rate_session` returns 422 `session_not_started`.
+- **Pin `demo.now`** in dev so the rating cutoff and `whats_on_now` are deterministic. Without it, the wall clock reads "today" and every seeded 2026-11-10 session looks future-dated, so `rate_session` returns 422 `session_not_started`.
 - **No code comments explaining "why we did X"**. The rationale belongs in this spec or in a commit message, not in the source. Keep code comments to the minimum needed to read the code in isolation. Avoid javadoc that recapitulates what the method signature already says.
 
 ## Out of scope

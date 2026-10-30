@@ -22,7 +22,7 @@
     // --- MFA step-up -------------------------------------------------------
     // The chat is a single-page app, so we never navigate it. Instead we open the OIDC
     // step-up in a popup; once Keycloak completes the OTP, the callback rewrites the
-    // same-origin session cookie to acr=urn:jprime:mfa. The popup posts back, we refresh the shown
+    // same-origin session cookie to acr=urn:porto:mfa. The popup posts back, we refresh the shown
     // identity and resend the prompt that needed MFA, all with the transcript intact.
     let stepUp = null; // { win, btn, prompt, poll }
 
@@ -41,7 +41,7 @@
         const w = 480, h = 720;
         const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
         const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
-        const win = window.open('/step-up', 'jprime-step-up',
+        const win = window.open('/step-up', 'porto-step-up',
             'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
         if (!win) {
             setStepUpHint(btn, 'Popup blocked. Allow popups for this site, then try again.');
@@ -79,8 +79,8 @@
             const hint = box.querySelector('.stepup-status') || document.createElement('p');
             hint.className = 'stepup-status';
             hint.textContent = prompt
-                ? 'MFA complete (acr=urn:jprime:mfa). Resending the prompt…'
-                : 'MFA complete (acr=urn:jprime:mfa).';
+                ? 'MFA complete (acr=urn:porto:mfa). Resending the prompt…'
+                : 'MFA complete (acr=urn:porto:mfa).';
             if (!hint.isConnected) box.appendChild(hint);
         }
         if (prompt) sendPrompt(prompt);
@@ -311,7 +311,7 @@
 
     // Always render in the conference's local time so the presenter's laptop
     // timezone never misleads the audience.
-    const VENUE_TZ = 'Europe/Sofia';
+    const VENUE_TZ = 'Europe/Lisbon';
     const DAY_FMT = new Intl.DateTimeFormat('en-GB',
         { weekday: 'short', day: 'numeric', month: 'short', timeZone: VENUE_TZ });
     const TIME_FMT = new Intl.DateTimeFormat('en-GB',

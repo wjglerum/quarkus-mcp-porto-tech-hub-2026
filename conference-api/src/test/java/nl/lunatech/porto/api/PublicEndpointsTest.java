@@ -1,0 +1,90 @@
+package nl.lunatech.porto.api;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.notNullValue;
+
+@QuarkusTest
+class PublicEndpointsTest {
+
+    @Test
+    void listsSessions() {
+        given()
+                .when().get("/api/v1/sessions")
+                .then().statusCode(200)
+                .body("size()", greaterThan(0))
+                .body("title", hasItem("Practical MCP Security in Action"));
+    }
+
+    @Test
+    void filtersByQuery() {
+        given().queryParam("q", "GraalVM")
+                .when().get("/api/v1/sessions")
+                .then().statusCode(200)
+                .body("size()", greaterThan(0))
+                .body("title[0]", containsString("GraalVM"));
+    }
+
+    @Test
+    void filtersBySpeakerId() {
+        Integer speakerId = given().when().get("/api/v1/speakers")
+                .then().statusCode(200)
+                .extract().jsonPath()
+                .getInt("find { it.name == 'Willem Jan Glerum' }.id");
+        given().queryParam("speaker_id", speakerId)
+                .when().get("/api/v1/sessions")
+                .then().statusCode(200)
+                .body("size()", greaterThan(0))
+                .body("title", hasItem("Practical MCP Security in Action"));
+    }
+
+    @Test
+    void getsSingleSession() {
+        Integer id = given().queryParam("q", "Practical MCP Security")
+                .when().get("/api/v1/sessions")
+                .then().statusCode(200)
+                .extract().jsonPath().getInt("[0].id");
+        given().when().get("/api/v1/sessions/{id}", id)
+                .then().statusCode(200)
+                .body("title", notNullValue())
+                .body("speaker", notNullValue());
+    }
+
+    @Test
+    void currentSessionsAtRehearsalClock() {
+        given().queryParam("at", "2026-11-10T11:30:00+00:00")
+                .when().get("/api/v1/sessions/current")
+                .then().statusCode(200)
+                .body("title", hasItem("Practical MCP Security in Action"));
+    }
+
+    @Test
+    void nextSessionsRespectsLimit() {
+        given().queryParam("at", "2026-11-10T11:05:00+00:00")
+                .queryParam("limit", 2)
+                .when().get("/api/v1/sessions/next")
+                .then().statusCode(200)
+                .body("size()", lessThanOrEqualTo(2));
+    }
+
+    @Test
+    void listsSpeakers() {
+        given().when().get("/api/v1/speakers")
+                .then().statusCode(200)
+                .body("name", hasItem("Willem Jan Glerum"))
+                .body("find { it.name == 'Willem Jan Glerum' }.sessions.size()", greaterThan(0));
+    }
+
+    @Test
+    void auditLiveDashboardServesHtml() {
+        given().when().get("/audit-live/")
+                .then().statusCode(200)
+                .body(containsString("audit_event"));
+    }
+}

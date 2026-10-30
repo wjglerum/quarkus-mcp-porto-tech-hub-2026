@@ -1,5 +1,5 @@
 {
-  "realm": "jprime",
+  "realm": "porto",
   "notBefore": 0,
   "defaultSignatureAlgorithm": "RS256",
   "revokeRefreshToken": false,
@@ -47,11 +47,11 @@
   "roles": {
     "realm": [
       {
-        "name": "default-roles-jprime",
+        "name": "default-roles-porto",
         "description": "${role_default-roles}",
         "composite": false,
         "clientRole": false,
-        "containerId": "jprime",
+        "containerId": "porto",
         "attributes": {}
       },
       {
@@ -59,7 +59,7 @@
         "description": "${role_offline-access}",
         "composite": false,
         "clientRole": false,
-        "containerId": "jprime",
+        "containerId": "porto",
         "attributes": {}
       },
       {
@@ -67,7 +67,7 @@
         "description": "${role_uma_authorization}",
         "composite": false,
         "clientRole": false,
-        "containerId": "jprime",
+        "containerId": "porto",
         "attributes": {}
       },
       {
@@ -75,7 +75,7 @@
         "description": "Conference attendee",
         "composite": false,
         "clientRole": false,
-        "containerId": "jprime",
+        "containerId": "porto",
         "attributes": {}
       },
       {
@@ -83,7 +83,7 @@
         "description": "Conference speaker",
         "composite": false,
         "clientRole": false,
-        "containerId": "jprime",
+        "containerId": "porto",
         "attributes": {}
       }
     ],
@@ -91,11 +91,11 @@
   },
   "groups": [],
   "defaultRole": {
-    "name": "default-roles-jprime",
+    "name": "default-roles-porto",
     "description": "${role_default-roles}",
     "composite": true,
     "clientRole": false,
-    "containerId": "jprime"
+    "containerId": "porto"
   },
   "requiredCredentials": [
     "password"
@@ -159,7 +159,7 @@
       "lastName": "Demo",
       "realmRoles": [
         "attendee",
-        "default-roles-jprime"
+        "default-roles-porto"
       ],
       "credentials": [
         {
@@ -179,7 +179,7 @@
       "realmRoles": [
         "attendee",
         "speaker",
-        "default-roles-jprime"
+        "default-roles-porto"
       ],
       "credentials": [
         {
@@ -189,8 +189,8 @@
         },
         {
           "type": "otp",
-          "userLabel": "jPrime demo authenticator",
-          "secretData": "{\"value\":\"jprimemcp2026stepupseed\"}",
+          "userLabel": "Porto Tech Hub demo authenticator",
+          "secretData": "{\"value\":\"portomcp2026stepupseed\"}",
           "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"counter\":0,\"period\":30,\"algorithm\":\"HmacSHA1\"}"
         }
       ]
@@ -205,7 +205,7 @@
       "realmRoles": [
         "attendee",
         "speaker",
-        "default-roles-jprime"
+        "default-roles-porto"
       ],
       "credentials": [
         {
@@ -215,8 +215,8 @@
         },
         {
           "type": "otp",
-          "userLabel": "jPrime demo authenticator",
-          "secretData": "{\"value\":\"jprimemcp2026stepupseed\"}",
+          "userLabel": "Porto Tech Hub demo authenticator",
+          "secretData": "{\"value\":\"portomcp2026stepupseed\"}",
           "credentialData": "{\"subType\":\"totp\",\"digits\":6,\"counter\":0,\"period\":30,\"algorithm\":\"HmacSHA1\"}"
         }
       ]
@@ -2036,7 +2036,7 @@
     "parRequestUriLifespan": "60",
     "cibaInterval": "5",
     "realmReusableOtpCode": "false",
-    "acr.loa.map": "{\"urn:jprime:mfa\": \"2\"}"
+    "acr.loa.map": "{\"urn:porto:mfa\": \"2\"}"
   },
   "keycloakVersion": "26.5.7",
   "userManagedAccessAllowed": false,
@@ -2049,5 +2049,5 @@
   "clientPolicies": {
     "policies": []
   },
-  "displayName": "jPrime 2026"
+  "displayName": "Porto Tech Hub 2026"
 }

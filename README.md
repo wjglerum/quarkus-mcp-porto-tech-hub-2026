@@ -1,5 +1,5 @@
 # Practical MCP Security in Action
-### jPrime 2026 / Conference Companion / Demo backend
+### Porto Tech Hub 2026 / Conference Companion / Demo backend
 
 > "It wasn't the AI. It was me."
 >
@@ -15,6 +15,7 @@
 | `keycloak-realm.json` | Single shared realm export at the monorepo root. All three apps reference it via `../keycloak-realm.json`. |
 | `SPEC.md`           | Original build spec for the demo (canonical reference). |
 | `RUNBOOK.md`        | Stage-side runbook with the three-demo flow and the env vars to set. |
+| `docs/slides/`      | The talk deck as a self-contained HTML page. |
 
 No Docker compose file: every backing service is auto-provisioned by **Quarkus Dev Services**.
 
@@ -32,7 +33,7 @@ graph LR
   CHAT["conference-chat :8082<br/>OIDC web app + LangChain4j MCP client"]
   MCP["conference-mcp :8081<br/>MCP server + tools"]
   API["conference-api :8080<br/>REST + Panache + audit + dashboard"]
-  KC[("Keycloak 26<br/>jprime realm")]
+  KC[("Keycloak 26<br/>porto realm")]
   DB[("Postgres<br/>schedule, agendas, audit")]
 
   USR -->|HTTPS| CHAT
@@ -57,7 +58,7 @@ sequenceDiagram
   participant API as conference-api
   participant DB as Postgres
 
-  User->>C: "Bookmark the JSpecify talk"
+  User->>C: "Bookmark the GraalVM talk"
   Note over C,KC: First time only: PKCE (plus DCR for Inspector)
   C->>KC: Authorization Code + PKCE
   KC-->>C: Access token (roles, preferred_username)
@@ -71,6 +72,12 @@ sequenceDiagram
   C-->>User: "Bookmarked."
   Note over API,DB: audit_event attributed to preferred_username, not the AI
 ```
+
+## MCP protocol version
+
+`conference-mcp` runs on [Quarkus MCP Server](https://docs.quarkiverse.io/quarkus-mcp-server/dev/) 2.0.4 (Quarkus 3.40.1), which implements the latest MCP spec, **2026-07-28**. The headline change in that spec is the **stateless** mode: a client skips the `initialize`/`initialized` handshake, can call `server/discover` to learn the supported versions and capabilities, and sends every request self-contained (`MCP-Protocol-Version` and `Mcp-Method` headers plus `_meta` client info). No `Mcp-Session-Id` is issued, so there is no session to go stale after a reload.
+
+The same `/mcp` endpoint still serves session-based clients on 2025-11-25 and earlier (MCP Inspector, the LangChain4j client in `conference-chat`). Authorization is unchanged across both modes: every request, stateless or not, carries the Bearer token and passes the same gate. `McpProtocolVersionTest` pins this behaviour.
 
 ## MCP endpoint authorization
 
@@ -115,7 +122,7 @@ cd conference-chat && ./mvnw quarkus:dev
 On first start Dev Services boots:
 
 - a **Postgres 16** container for `conference-api` (schema owned by Hibernate via `drop-and-create`, auto-seeded with the schedule and demo data)
-- a **Keycloak 26** container with the `jprime` realm pre-imported, shared between all three apps via `service-name=jprime-keycloak`
+- a **Keycloak 26** container with the `porto` realm pre-imported, shared between all three apps via `service-name=porto-keycloak`
 
 The realm export lives once at the monorepo root (`./keycloak-realm.json`). All three apps reference it via `quarkus.keycloak.devservices.realm-path=../keycloak-realm.json`.
 

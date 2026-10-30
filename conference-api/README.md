@@ -1,6 +1,6 @@
 # conference-api
 
-Backing data API for the jPrime 2026 MCP demo. Exposes the schedule, attendee
+Backing data API for the Porto Tech Hub 2026 MCP demo. Exposes the schedule, attendee
 agendas, ratings, and an open audit feed under `/api/v1/`, and serves the
 second-screen audit dashboard at `/audit-live/`.
 
@@ -30,7 +30,7 @@ From this directory:
 ```
 
 Dev Services boots Postgres and a shared Keycloak realm automatically. The
-seeders fill the schedule from `src/main/resources/seed/jprime-2026-agenda.json`
+seeders fill the schedule from `src/main/resources/seed/porto-tech-hub-2026-agenda.json`
 and create demo attendees, bookmarks, and ratings.
 
 Useful URLs in dev mode:
@@ -65,7 +65,7 @@ Speaker role (`speaker`):
 - `GET /api/v1/me/sessions/feedback`
 
 Speaker role plus step-up
-(`acr=urn:jprime:mfa` or `acr=2`):
+(`acr=urn:porto:mfa` or `acr=2`):
 
 - `GET /api/v1/sessions/{id}/attendees`
 - `POST /api/v1/sessions/{id}/cancel` (reversible toggle)
@@ -73,8 +73,8 @@ Speaker role plus step-up
 ## Demo clock
 
 The rating cutoff and `whats_on_now`/`whats_next` resolve to `demo.now` when
-set, otherwise to the wall clock at offset `+03:00`. In `%dev` the default is
-`2026-06-03T10:45:00+03:00` so the demo lands on Wednesday mid-morning out of
+set, otherwise to the wall clock in UTC (Lisbon is on WET, `+00:00`, in November). In `%dev` the default is
+`2026-11-10T11:40:00+00:00` so the demo lands half-way through the MCP talk slot out of
 the box. Override with `DEMO_NOW`.
 
 ## Tests

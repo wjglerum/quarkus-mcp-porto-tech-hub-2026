@@ -1,6 +1,6 @@
 # conference-mcp
 
-Quarkus MCP server for the jPrime 2026 demo. Thin protocol adapter that exposes
+Quarkus MCP server for the Porto Tech Hub 2026 demo. Thin protocol adapter that exposes
 conference tools to AI clients, secured with OIDC and propagates the user's
 bearer token to `conference-api`.
 

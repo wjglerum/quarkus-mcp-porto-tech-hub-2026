@@ -1,6 +1,6 @@
 # conference-chat
 
-AI chat client for the jPrime 2026 "Practical MCP Security in Action" demo. A
+AI chat client for the Porto Tech Hub 2026 "Practical MCP Security in Action" demo. A
 Quarkus app on port 8082 that:
 
 - Logs the user in via OIDC web-app flow with PKCE S256 (shared Keycloak Dev
@@ -83,7 +83,7 @@ to the Quarkus platform BOM.
 |---------|---------|---------|
 | `CONFERENCE_MCP_URL` | MCP endpoint (streamable HTTP). | `http://localhost:8081/mcp` |
 | `ANTHROPIC_API_KEY` | Set as `quarkus.langchain4j.anthropic.api-key` to enable Claude. | unset |
-| `DEMO_NOW` | Override the demo clock used by `whats_on_now`. | `2026-06-03T10:45:00+03:00` in `%dev` |
+| `DEMO_NOW` | Override the demo clock used by `whats_on_now`. | `2026-11-10T11:40:00+00:00` in `%dev` |
 
 ## Quarkus guides
 

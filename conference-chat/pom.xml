@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>nl.lunatech.jprime</groupId>
+    <groupId>nl.lunatech.porto</groupId>
     <artifactId>conference-chat</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>quarkus</packaging>
@@ -13,8 +13,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.39.5</quarkus.platform.version>
-        <quarkus-langchain4j.version>1.14.0</quarkus-langchain4j.version>
+        <quarkus.platform.version>3.40.1</quarkus.platform.version>
+        <quarkus-langchain4j.version>1.14.2</quarkus-langchain4j.version>
         <quarkus-playwright.version>2.3.8</quarkus-playwright.version>
         <assertj.version>3.27.7</assertj.version>
         <skipITs>true</skipITs>

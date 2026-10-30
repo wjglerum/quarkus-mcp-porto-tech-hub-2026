@@ -1,6 +1,6 @@
 # Runbook: Practical MCP Security in Action
 
-The stage-side runbook for the three live demos at jPrime 2026.
+The stage-side runbook for the three live demos at Porto Tech Hub 2026.
 
 ## Stage assumptions
 
@@ -12,7 +12,7 @@ The stage-side runbook for the three live demos at jPrime 2026.
 
 ## Pre-flight: step-up demo prerequisite
 
-The seeded realm ships a TOTP credential for `willem.jan` (secret `jprimemcp2026stepupseed`) and a `Browser Stepup` authentication flow that maps `urn:jprime:mfa` to LoA 2 (OTP, re-prompted after 5 minutes). Add that secret to a TOTP app on your phone before the talk (manual entry, Base32, 6 digits, 30s) so you can complete the OTP prompt live.
+The seeded realm ships a TOTP credential for `willem.jan` (secret `portomcp2026stepupseed`) and a `Browser Stepup` authentication flow that maps `urn:porto:mfa` to LoA 2 (OTP, re-prompted after 5 minutes). Add that secret to a TOTP app on your phone before the talk (manual entry, Base32, 6 digits, 30s) so you can complete the OTP prompt live.
 
 The step-up demo first surfaces as a 401 + `WWW-Authenticate: Bearer error="insufficient_user_authentication"` response from `conference-api` and a `ToolCallException("insufficient_user_authentication: ...")` from `conference-mcp`. Show that response on the second screen, then re-authenticate through the OTP prompt and retry.
 
@@ -20,7 +20,7 @@ The step-up demo first surfaces as a 401 + `WWW-Authenticate: Bearer error="insu
 
 | Variable | Purpose | Demo default |
 |----------|---------|--------------|
-| `DEMO_NOW` | Override the "current time" used by `whats_on_now`, `whats_next`, and the rating cutoff. | `2026-06-03T10:45:00+03:00` |
+| `DEMO_NOW` | Override the "current time" used by `whats_on_now`, `whats_next`, and the rating cutoff. | `2026-11-10T11:40:00+00:00` |
 
 `OIDC_AUTH_SERVER_URL`, `CONFERENCE_API_URL`, `CONFERENCE_MCP_URL`, and database credentials are only needed in `%prod`. In dev mode Quarkus Dev Services wires everything automatically.
 
@@ -28,13 +28,13 @@ The step-up demo first surfaces as a 401 + `WWW-Authenticate: Bearer error="insu
 
 ```bash
 # Terminal 1 - starts Postgres + Keycloak Dev Services on first boot
-cd conference-api && DEMO_NOW=2026-06-03T10:45:00+03:00 ./mvnw quarkus:dev
+cd conference-api && DEMO_NOW=2026-11-10T11:40:00+00:00 ./mvnw quarkus:dev
 
 # Terminal 2 - joins the shared Keycloak container
-cd conference-mcp && DEMO_NOW=2026-06-03T10:45:00+03:00 ./mvnw quarkus:dev
+cd conference-mcp && DEMO_NOW=2026-11-10T11:40:00+00:00 ./mvnw quarkus:dev
 
 # Terminal 3 - chat client, joins the same Keycloak container
-cd conference-chat && DEMO_NOW=2026-06-03T10:45:00+03:00 ./mvnw quarkus:dev
+cd conference-chat && DEMO_NOW=2026-11-10T11:40:00+00:00 ./mvnw quarkus:dev
 ```
 
 The first start pulls the Postgres and Keycloak images. Allow 30 to 60 seconds on a fresh machine; subsequent restarts reuse the containers.
@@ -45,7 +45,7 @@ Open `http://localhost:8080/audit-live/` on the second monitor.
 
 1. `curl http://localhost:8080/api/v1/sessions | jq '.[0]'` returns a real session.
 2. The audit dashboard shows "Waiting for the first event..." (clean state) or a recent rehearsal event.
-3. Open the Dev UI at `http://localhost:8080/q/dev/` and click the **Keycloak** tile. Confirm realm `jprime` is imported with `attendee`, `willem.jan`, and `admin-demo`.
+3. Open the Dev UI at `http://localhost:8080/q/dev/` and click the **Keycloak** tile. Confirm realm `porto` is imported with `attendee`, `willem.jan`, and `admin-demo`.
 4. From the Dev UI Keycloak tile, copy the realm URL. Paste `http://<dev-keycloak-url>/.well-known/openid-configuration` into a browser tab and confirm 200.
 5. Hit `http://localhost:8082/` in a browser; log in as `attendee / attendee`. The Qute shell renders with the quick prompts.
 
@@ -55,7 +55,7 @@ Point MCP Inspector at the streamable HTTP endpoint `http://localhost:8081/mcp` 
 
 The whole `/mcp` endpoint requires the `attendee` scope, so the first unauthenticated request returns a `401` whose `WWW-Authenticate` header carries the `resource_metadata` pointer. That is the spec-compliant signal that starts the discovery above. A token that authenticates but lacks the `attendee` scope returns a `403` with `error="insufficient_scope", scope="attendee"`, emitted by the `quarkus-mcp-server-oidc` extension. Both challenges name the resource metadata URL so the client knows where to go next.
 
-The `jprime` realm is deliberately configured for **open anonymous DCR** so Inspector can register with no pre-shared credentials. Keycloak ships four anonymous client-registration policies that each block or cripple a DCR client; all four have been cleared in `keycloak-realm.json`:
+The `porto` realm is deliberately configured for **open anonymous DCR** so Inspector can register with no pre-shared credentials. Keycloak ships four anonymous client-registration policies that each block or cripple a DCR client; all four have been cleared in `keycloak-realm.json`:
 
 | Removed/changed policy | Why it had to go |
 |------------------------|------------------|
@@ -105,7 +105,7 @@ already present in all three `application.properties` files. Because Dev Service
 Confirm the feature is live from the Keycloak startup log:
 
 ```bash
-docker logs $(docker ps -q --filter "label=quarkus-dev-service-keycloak=jprime-keycloak") 2>&1 \
+docker logs $(docker ps -q --filter "label=quarkus-dev-service-keycloak=porto-keycloak") 2>&1 \
   | grep -i "features enabled"
 # expect a line listing cimd, e.g. "Experimental features enabled: cimd:v1"
 ```
@@ -144,7 +144,7 @@ Talking point: **DCR makes the authorization server keep a writeable door open, 
 
 1. Open the MCP client: the conference-chat browser at `http://localhost:8082/`, or MCP Inspector pointed at `http://localhost:8081/mcp`.
 2. Log in as **attendee / attendee** (chat) or run DCR (Inspector).
-3. Ask: *"What's happening at jPrime right now?"* (calls `whats_on_now`).
+3. Ask: *"What's happening at Porto Tech Hub right now?"* (calls `whats_on_now`).
 4. Ask: *"What should I see after the keynote on day 2?"* (calls `whats_next`).
 5. Highlight PKCE: the `conference-chat` terminal logs a line on every login, e.g.
    ```
@@ -161,9 +161,9 @@ The audit dashboard shows nothing yet (read-only tools do not audit). Tell the a
 ## Demo 2: Personal agenda with token propagation (~10 min)
 
 1. Stay logged in, or re-login as **willem.jan / willem.jan** for the speaker side later.
-2. Ask: *"Bookmark the JSpecify talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
+2. Ask: *"Bookmark the GraalVM talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
 3. Ask: *"Show me my agenda."* (calls `my_agenda`).
-4. Ask: *"Also add Concurrency Crossroads."* Then *"Do I have any conflicts?"* (calls `my_conflicts`).
+4. Ask: *"Also add the Practical MCP Security talk."* Then *"Do I have any conflicts?"* (calls `my_conflicts`; both run 11:10 to 12:00).
 5. Ask: *"Rate the MCP Security talk 5 stars with the comment 'great use of caffeine'."* (calls `rate_session`). A `RATE_SESSION` event lands, with `attendee_subject=willem.jan`.
 6. Turn to the second monitor and read the event aloud:
    ```
@@ -180,9 +180,9 @@ The audit dashboard shows nothing yet (read-only tools do not audit). Tell the a
 
 1. Stay logged in as **willem.jan**, no MFA (acr=1).
 2. Ask: *"Show me the feedback on my MCP talk."* (calls `my_session_feedback`) returns seeded ratings.
-3. Ask: *"Who signed up to attend my Concurrency Crossroads deep dive?"* (calls `view_session_attendees`).
-4. Server returns `insufficient_user_authentication`. Show the 401 + `WWW-Authenticate` response on the second screen (the chat surfaces the same as an amber step-up card). Talk through what a real client would do next: re-auth with `acr_values=urn:jprime:mfa`, retry the tool call.
-5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:jprime:mfa`.
+3. Ask: *"Who signed up to attend my MCP Security talk?"* (calls `view_session_attendees`).
+4. Server returns `insufficient_user_authentication`. Show the 401 + `WWW-Authenticate` response on the second screen (the chat surfaces the same as an amber step-up card). Talk through what a real client would do next: re-auth with `acr_values=urn:porto:mfa`, retry the tool call.
+5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:porto:mfa`.
 
 Talking points: **step-up is the spec-level answer to "OAuth is for humans". Same protocol, different acr requirement, server-driven.**
 
@@ -208,7 +208,7 @@ Editing `keycloak-realm.json` has no effect until Keycloak re-imports it, and De
 ```bash
 # 1. Ctrl-C all three quarkus:dev processes.
 # 2. Remove the shared Keycloak container so Dev Services cannot reuse it:
-docker rm -f $(docker ps -aq --filter "label=quarkus-dev-service-keycloak=jprime-keycloak")
+docker rm -f $(docker ps -aq --filter "label=quarkus-dev-service-keycloak=porto-keycloak")
 # 3. Restart conference-api FIRST (it creates Keycloak and imports the realm), then mcp, then chat.
 ```
 
