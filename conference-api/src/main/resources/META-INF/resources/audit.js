@@ -21,14 +21,16 @@
         return '';
     }
 
+    // Venue time, not the laptop's: the presenter's machine may still be on another zone.
+    const VENUE_TZ = 'Europe/Lisbon';
+    const timeFmt = new Intl.DateTimeFormat('en-GB', {
+        timeZone: VENUE_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+
     function fmtTime(iso) {
         if (!iso) return '';
         try {
-            const d = new Date(iso);
-            const hh = String(d.getHours()).padStart(2, '0');
-            const mm = String(d.getMinutes()).padStart(2, '0');
-            const ss = String(d.getSeconds()).padStart(2, '0');
-            return hh + ':' + mm + ':' + ss;
+            return timeFmt.format(new Date(iso));
         } catch (e) {
             return iso;
         }

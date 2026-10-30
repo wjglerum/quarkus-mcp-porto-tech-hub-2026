@@ -94,6 +94,7 @@ public class MeResource {
         Attendee me = attendees.currentAttendee();
         List<Session> bookmarked = Bookmark.listByAttendee(me.id).stream()
                 .map(b -> b.session)
+                .filter(s -> !s.cancelled)
                 .toList();
         return Session.overlapping(bookmarked).stream().map(SessionDto::of).toList();
     }

@@ -12,7 +12,13 @@ The stage-side runbook for the three live demos at Porto Tech Hub 2026.
 
 ## Pre-flight: step-up demo prerequisite
 
-The seeded realm ships a TOTP credential for `willem.jan` (secret `portomcp2026stepupseed`) and a `Browser Stepup` authentication flow that maps `urn:porto:mfa` to LoA 2 (OTP, re-prompted after 5 minutes). Add that secret to a TOTP app on your phone before the talk (manual entry, Base32, 6 digits, 30s) so you can complete the OTP prompt live.
+The seeded realm ships a TOTP credential for `willem.jan` and a `Browser Stepup` authentication flow that maps `urn:porto:mfa` to LoA 2 (OTP, re-prompted after 5 minutes). Keycloak stores the raw secret `portomcp2026stepupseed`; authenticator apps want its Base32 form. Add it to a TOTP app on your phone before the talk (manual entry, SHA1, 6 digits, 30s):
+
+```
+OBXXE5DPNVRXAMRQGI3HG5DFOB2XA43FMVSA
+```
+
+The seed changed from the jPrime realm, so an existing jPrime entry on the phone will produce wrong codes. Check the phone clock is synced; TOTP fails on drift.
 
 The step-up demo first surfaces as a 401 + `WWW-Authenticate: Bearer error="insufficient_user_authentication"` response from `conference-api` and a `ToolCallException("insufficient_user_authentication: ...")` from `conference-mcp`. Show that response on the second screen, then re-authenticate through the OTP prompt and retry.
 
@@ -21,6 +27,7 @@ The step-up demo first surfaces as a 401 + `WWW-Authenticate: Bearer error="insu
 | Variable | Purpose | Demo default |
 |----------|---------|--------------|
 | `DEMO_NOW` | Override the "current time" used by `whats_on_now`, `whats_next`, and the rating cutoff. | `2026-11-10T11:40:00+00:00` |
+| `ANTHROPIC_API_KEY` | The LLM behind `conference-chat`. Without it the chat cannot plan a single tool call. | required in Terminal 3 |
 
 `OIDC_AUTH_SERVER_URL`, `CONFERENCE_API_URL`, `CONFERENCE_MCP_URL`, and database credentials are only needed in `%prod`. In dev mode Quarkus Dev Services wires everything automatically.
 
@@ -34,6 +41,7 @@ cd conference-api && DEMO_NOW=2026-11-10T11:40:00+00:00 ./mvnw quarkus:dev
 cd conference-mcp && DEMO_NOW=2026-11-10T11:40:00+00:00 ./mvnw quarkus:dev
 
 # Terminal 3 - chat client, joins the same Keycloak container
+export ANTHROPIC_API_KEY=...
 cd conference-chat && DEMO_NOW=2026-11-10T11:40:00+00:00 ./mvnw quarkus:dev
 ```
 
@@ -47,7 +55,27 @@ Open `http://localhost:8080/audit-live/` on the second monitor.
 2. The audit dashboard shows "Waiting for the first event..." (clean state) or a recent rehearsal event.
 3. Open the Dev UI at `http://localhost:8080/q/dev/` and click the **Keycloak** tile. Confirm realm `porto` is imported with `attendee`, `willem.jan`, and `admin-demo`.
 4. From the Dev UI Keycloak tile, copy the realm URL. Paste `http://<dev-keycloak-url>/.well-known/openid-configuration` into a browser tab and confirm 200.
-5. Hit `http://localhost:8082/` in a browser; log in as `attendee / attendee`. The Qute shell renders with the quick prompts.
+5. Hit `http://localhost:8082/` in a browser; log in as `attendee / attendee`. The Qute shell renders with the quick prompts. Click *"What's happening right now?"* once: a real answer proves the API key and the MCP connection.
+6. Start the apps (and so Keycloak) at least 15 minutes before the slot; the first container start is the slow one.
+7. Venue wifi: tether to a phone hotspot for the LLM and the Inspector `npx` download.
+8. Do one full dry run after a clean Postgres restart (see Recovery) so the seeds and the cancel toggle are reset. Then restart once more: the dry run leaves your bookmarks, rating and cancellation behind.
+9. Notifications off, sleep off, backup videos queued.
+10. LLM fallback: every tool also runs from MCP Inspector, which needs no LLM.
+
+## Time budget (50 minutes)
+
+| Block | Minutes |
+|-------|---------|
+| Slides before Demo 1 | 8 |
+| Demo 1 | 6 |
+| Slides between | 7 |
+| Demo 2 | 7 |
+| Slides between | 5 |
+| Demo 3 | 6 |
+| Wrap-up | 4 |
+| Buffer / Q&A | 7 |
+
+Do the DCR versus CIMD contrast in Demo 1 on the slide, not live, if the clock is tight.
 
 ## MCP Inspector and Dynamic Client Registration (DCR)
 
@@ -68,7 +96,7 @@ On top of that, the `basic` client scope carries `realm-roles` and `preferred_us
 
 Talking point: **"the AI got a token" is not "the AI got a useful token".** Keycloak strips scopes, roles, and identity from dynamically registered clients by default. Every claim the agent acts on has to be consciously engineered in.
 
-**Reconnect after any reload.** MCP sessions live in the `conference-mcp` process. Whenever it hot-reloads or restarts, Inspector's session id goes stale and every POST fails with `MCP error -32099: Streamable HTTP error: Error POSTing to endpoint (HTTP 404)`. Fix: click **Disconnect** then **Connect** in Inspector to re-run `initialize`. The OAuth token stays valid, so no re-login.
+**Reconnect after any reload.** MCP sessions live in the `conference-mcp` process. Inspector and the chat client still use session mode (2025-11-25); stateless 2026-07-28 clients have no session to lose. Whenever it hot-reloads or restarts, Inspector's session id goes stale and every POST fails with `MCP error -32099: Streamable HTTP error: Error POSTing to endpoint (HTTP 404)`. Fix: click **Disconnect** then **Connect** in Inspector to re-run `initialize`. The OAuth token stays valid, so no re-login.
 
 ## MCP Inspector and Client ID Metadata Documents (CIMD)
 
@@ -144,8 +172,8 @@ Talking point: **DCR makes the authorization server keep a writeable door open, 
 
 1. Open the MCP client: the conference-chat browser at `http://localhost:8082/`, or MCP Inspector pointed at `http://localhost:8081/mcp`.
 2. Log in as **attendee / attendee** (chat) or run DCR (Inspector).
-3. Ask: *"What's happening at Porto Tech Hub right now?"* (calls `whats_on_now`).
-4. Ask: *"What should I see after the keynote on day 2?"* (calls `whats_next`).
+3. Ask: *"What's happening right now?"* (calls `whats_on_now`). At 11:40 that is eight sessions, including this talk.
+4. Ask: *"What's coming up next?"* (calls `whats_next`).
 5. Highlight PKCE: the `conference-chat` terminal logs a line on every login, e.g.
    ```
    PKCE on outbound authorization request: code_challenge_method=S256 code_challenge=E9Me...
@@ -154,13 +182,13 @@ Talking point: **DCR makes the authorization server keep a writeable door open, 
 
 6. **Registration contrast.** Show how the Inspector got its client identity two ways. First DCR: the four policies you had to clear so Keycloak would accept a dynamically registered client (see the DCR section above). Then CIMD: the same Inspector identified by a URL `client_id`, with Keycloak fetching the metadata document and zero policy surgery (see the CIMD section above). Land the punchline: DCR keeps a writeable registration door open and asks you to lock it down, CIMD removes the door.
 
-Talking points: **PKCE, DCR, and CIMD as the spec-preferred successor, why client identity matters for AI clients.**
+Talking points: **PKCE, CIMD as the default, DCR as the deprecated legacy path (deprecated in the 2026-07-28 spec), why client identity matters for AI clients.**
 
 The audit dashboard shows nothing yet (read-only tools do not audit). Tell the audience: "Read tools do not show up. That is on purpose. The audit log records intent, not curiosity."
 
 ## Demo 2: Personal agenda with token propagation (~10 min)
 
-1. Stay logged in, or re-login as **willem.jan / willem.jan** for the speaker side later.
+1. Log out of the attendee session and log in as **willem.jan / willem.jan**. Demo 2 and 3 both run as you, and the audit punchline names you. The agenda starts empty.
 2. Ask: *"Bookmark the GraalVM talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
 3. Ask: *"Show me my agenda."* (calls `my_agenda`).
 4. Ask: *"Also add the Practical MCP Security talk."* Then *"Do I have any conflicts?"* (calls `my_conflicts`; both run 11:10 to 12:00).
@@ -169,12 +197,14 @@ The audit dashboard shows nothing yet (read-only tools do not audit). Tell the a
    ```
    audit_event
      action               RATE_SESSION
-     target               session:110 (Practical MCP Security)
+     target               session:<id> (Practical MCP Security)
      attendee_subject     willem.jan
      token_acr            1
      ...
    ```
+   `executed_by_client` reads `conference-chat`: the enterprise app acted, on your token.
 7. **Punchline:** not "AI rated it 5 stars" but "Willem Jan rated it 5 stars, executed by an AI on his behalf, with his token, fully auditable."
+8. Be ready for the question "isn't forwarding the token passthrough?". Yes: today the token carries both audiences. The fix is token exchange (RFC 8693), on the next slide.
 
 ## Demo 3: Step-up auth (~8 min)
 
@@ -183,8 +213,10 @@ The audit dashboard shows nothing yet (read-only tools do not audit). Tell the a
 3. Ask: *"Who signed up to attend my MCP Security talk?"* (calls `view_session_attendees`).
 4. Server returns `insufficient_user_authentication`. Show the 401 + `WWW-Authenticate` response on the second screen (the chat surfaces the same as an amber step-up card). Talk through what a real client would do next: re-auth with `acr_values=urn:porto:mfa`, retry the tool call.
 5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:porto:mfa`.
+6. Ask: *"Cancel my MCP Security talk, reason is I want to go home early."* (calls `cancel_my_session`). A red `CANCEL_SESSION` event lands with the strong acr.
+7. Undo it straight away: *"Undo the cancellation of my MCP Security talk, reason: back on track."* The same tool toggles back and records `CANCEL_SESSION_UNDONE`. Undo before Q&A: a cancelled talk drops out of `whats_on_now`.
 
-Talking points: **step-up is the spec-level answer to "OAuth is for humans". Same protocol, different acr requirement, server-driven.**
+Talking points: **step-up is server-driven: the tool decides it needs more proof. Honest caveat: MCP itself only standardises scope step-up (403 `insufficient_scope`); assurance step-up with `acr` (RFC 9470) is a contract between this server and this client.**
 
 ## Recovery
 

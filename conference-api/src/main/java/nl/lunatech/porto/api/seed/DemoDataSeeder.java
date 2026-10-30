@@ -2,7 +2,9 @@ package nl.lunatech.porto.api.seed;
 
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import nl.lunatech.porto.api.clock.DemoClock;
 import nl.lunatech.porto.api.domain.Attendee;
 import nl.lunatech.porto.api.domain.AuditEvent;
 import nl.lunatech.porto.api.domain.Bookmark;
@@ -13,6 +15,7 @@ import nl.lunatech.porto.api.domain.Speaker;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -41,6 +44,9 @@ public class DemoDataSeeder {
             "A bit fast for a beginner audience but solid material.",
             "Made a complex topic feel simple."
     );
+
+    @Inject
+    DemoClock clock;
 
     @Transactional
     public int seedIfEmpty() {
@@ -72,7 +78,8 @@ public class DemoDataSeeder {
 
         int bookmarks = 0;
         if (!sessions.isEmpty()) {
-            for (Attendee a : attendees) {
+            // Fake attendees only: the speaker's agenda starts empty so demo 2 builds it live.
+            for (Attendee a : attendees.subList(1, attendees.size())) {
                 int n = 1 + rnd.nextInt(2);
                 for (int i = 0; i < n; i++) {
                     Session s = sessions.get(rnd.nextInt(sessions.size()));
@@ -103,18 +110,22 @@ public class DemoDataSeeder {
             }
         }
 
+        // Only sessions that have started by the demo clock can carry ratings, matching the
+        // rating cutoff the API enforces for live ratings.
+        OffsetDateTime now = clock.now();
+        List<Session> started = sessions.stream().filter(s -> !s.startsAt.isAfter(now)).toList();
         int ratings = 0;
-        if (!sessions.isEmpty()) {
+        if (!started.isEmpty()) {
             for (int i = 0; i < 50 && ratings < 25; i++) {
-                Attendee a = attendees.get(rnd.nextInt(attendees.size()));
-                Session s = sessions.get(rnd.nextInt(sessions.size()));
+                Attendee a = attendees.get(1 + rnd.nextInt(attendees.size() - 1));
+                Session s = started.get(rnd.nextInt(started.size()));
                 if (Rating.findOne(a.id, s.id) != null) continue;
                 Rating r = new Rating();
                 r.attendee = a;
                 r.session = s;
                 r.stars = 2 + rnd.nextInt(4);
                 r.comment = NICE_COMMENTS.get(rnd.nextInt(NICE_COMMENTS.size()));
-                r.createdAt = OffsetDateTime.parse("2026-11-10T11:15:00+00:00").plusMinutes(ratings);
+                r.createdAt = now.minusMinutes(30).plusMinutes(ratings);
                 r.persist();
                 ratings++;
             }
@@ -133,7 +144,7 @@ public class DemoDataSeeder {
                     r.session = s;
                     r.stars = 4 + (i % 2);
                     r.comment = NICE_COMMENTS.get(i % NICE_COMMENTS.size());
-                    r.createdAt = OffsetDateTime.parse("2026-11-10T11:45:00+00:00").plusMinutes(ratings + wjgRatings);
+                    r.createdAt = now.minusMinutes(10).plusMinutes(wjgRatings);
                     r.persist();
                     wjgRatings++;
                 }
@@ -141,7 +152,7 @@ public class DemoDataSeeder {
             }
         }
 
-        int auditEvents = seedAuditTrail(willemJan, sessions);
+        int auditEvents = seedAuditTrail(sessions);
 
         Log.infof("Demo data: seeded %d attendees, %d bookmarks, %d ratings (%d on Willem Jan's sessions), %d audit events",
                 attendees.size(), bookmarks, ratings + wjgRatings, wjgRatings, auditEvents);
@@ -149,38 +160,32 @@ public class DemoDataSeeder {
     }
 
     /**
-     * Seed a representative audit trail so the live dashboard shows real activity on load,
-     * with varied tiers (public, step-up, destructive) for the second-screen demo. Real
-     * actions performed during the talk land on top of these.
+     * Seed a representative attendee audit trail so the live dashboard shows real activity on
+     * load. Real actions performed during the talk land on top of these.
      */
-    private int seedAuditTrail(Speaker willemJan, List<Session> sessions) {
+    private int seedAuditTrail(List<Session> sessions) {
         if (sessions.isEmpty()) return 0;
-        long talkSid = sessions.stream()
+        Session talk = sessions.stream()
                 .filter(s -> "Practical MCP Security in Action".equals(s.title))
-                .map(s -> s.id).findFirst().orElse(sessions.get(0).id);
-        long wjgSid = willemJan == null
-                ? talkSid
-                : Session.<Session>find("speaker.id", willemJan.id).<Session>firstResultOptional()
-                        .map(s -> s.id).orElse(talkSid);
+                .findFirst().orElse(sessions.get(0));
+        // A session that has not started yet, for the rejected-rating example.
+        long laterSid = sessions.stream()
+                .filter(s -> !s.startsAt.isBefore(talk.endsAt))
+                .min(Comparator.comparing((Session s) -> s.startsAt).thenComparing(s -> s.id))
+                .map(s -> s.id).orElse(talk.id);
 
-        String strongAcr = "urn:porto:mfa";
         // Representative issuer for the seeded backdrop; live events carry the real dev-services
-        // issuer (a random localhost port). The client column shows the AI client that acted:
-        // attendees browse through an MCP client (Claude, DCR-registered), the speaker acts
-        // through the enterprise chat app.
+        // issuer (a random localhost port). Attendees browse through an MCP client (Claude,
+        // CIMD-registered). The speaker's own step-up actions are left out on purpose: they
+        // are the punchline of demo 3 and should land on the dashboard live.
         String iss = "https://auth.porto.demo/realms/porto";
         String aiClient = "claude-desktop";
-        String chatClient = "conference-chat";
         Object[][] trail = {
-                {"attendee-alice", "BOOKMARK_ADD", "session:" + talkSid, "1", "pwd", aiClient, "Practical MCP Security in Action"},
-                {"attendee-bob", "BOOKMARK_ADD", "session:" + talkSid, "1", "pwd", aiClient, "Practical MCP Security in Action"},
-                {"attendee-carol", "RATE_SESSION", "session:" + talkSid, "1", "pwd", aiClient, "stars=5 comment=great use of caffeine"},
-                {"attendee-dave", "RATE_SESSION_REJECTED_NOT_STARTED", "session:" + wjgSid, "1", "pwd", aiClient, "stars=4"},
-                {"attendee-erin", "BOOKMARK_REMOVE", "session:" + talkSid, "1", "pwd", aiClient, null},
-                {"willem.jan", "VIEW_SESSION_ATTENDEES", "session:" + wjgSid, strongAcr, "pwd,mfa,otp", chatClient, "viewed attendee list"},
-                {"willem.jan", "CANCEL_SESSION_ATTEMPTED", "session:" + wjgSid, "1", "pwd", chatClient, "step-up required"},
-                {"willem.jan", "CANCEL_SESSION", "session:" + wjgSid, strongAcr, "pwd,mfa,otp", chatClient, "reason=room change"},
-                {"willem.jan", "CANCEL_SESSION_UNDONE", "session:" + wjgSid, strongAcr, "pwd,mfa,otp", chatClient, "reason=back on track"},
+                {"attendee-alice", "BOOKMARK_ADD", "session:" + talk.id, "1", "pwd", aiClient, "Practical MCP Security in Action"},
+                {"attendee-bob", "BOOKMARK_ADD", "session:" + talk.id, "1", "pwd", aiClient, "Practical MCP Security in Action"},
+                {"attendee-carol", "RATE_SESSION", "session:" + talk.id, "1", "pwd", aiClient, "stars=5 comment=great use of caffeine"},
+                {"attendee-dave", "RATE_SESSION_REJECTED_NOT_STARTED", "session:" + laterSid, "1", "pwd", aiClient, "stars=4"},
+                {"attendee-erin", "BOOKMARK_REMOVE", "session:" + talk.id, "1", "pwd", aiClient, null},
         };
 
         OffsetDateTime base = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(12);

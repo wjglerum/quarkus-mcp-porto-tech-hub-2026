@@ -65,21 +65,21 @@ public class Session extends PanacheEntity {
             params.put("q", "%" + q.toLowerCase() + "%");
         }
         String where = conditions.isEmpty() ? "" : " where " + String.join(" and ", conditions);
-        return list("from Session s left join fetch s.speaker" + where + " order by s.startsAt asc", params);
+        return list("from Session s left join fetch s.speaker" + where + " order by s.startsAt asc, s.id asc", params);
     }
 
     public static List<Session> listForSpeaker(Long speakerId) {
-        return list("from Session s left join fetch s.speaker where s.speaker.id = ?1 order by s.startsAt", speakerId);
+        return list("from Session s left join fetch s.speaker where s.speaker.id = ?1 order by s.startsAt, s.id", speakerId);
     }
 
     public static List<Session> currentAt(OffsetDateTime now) {
         return list("from Session s left join fetch s.speaker"
-                + " where s.startsAt <= ?1 and s.endsAt > ?1 and s.cancelled = false order by s.startsAt", now);
+                + " where s.startsAt <= ?1 and s.endsAt > ?1 and s.cancelled = false order by s.startsAt, s.id", now);
     }
 
     public static List<Session> upcomingAfter(OffsetDateTime now, int limit) {
         return find("from Session s left join fetch s.speaker"
-                + " where s.startsAt > ?1 and s.cancelled = false order by s.startsAt", now)
+                + " where s.startsAt > ?1 and s.cancelled = false order by s.startsAt, s.id", now)
                 .page(0, limit).list();
     }
 

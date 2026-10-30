@@ -75,7 +75,7 @@ sequenceDiagram
 
 ## MCP protocol version
 
-`conference-mcp` runs on [Quarkus MCP Server](https://docs.quarkiverse.io/quarkus-mcp-server/dev/) 2.0.4 (Quarkus 3.40.1), which implements the latest MCP spec, **2026-07-28**. The headline change in that spec is the **stateless** mode: a client skips the `initialize`/`initialized` handshake, can call `server/discover` to learn the supported versions and capabilities, and sends every request self-contained (`MCP-Protocol-Version` and `Mcp-Method` headers plus `_meta` client info). No `Mcp-Session-Id` is issued, so there is no session to go stale after a reload.
+`conference-mcp` runs on [Quarkus MCP Server](https://docs.quarkiverse.io/quarkus-mcp-server/dev/) 2.0.4 (Quarkus 3.40.1), which implements the latest MCP spec, **2026-07-28**. The headline change in that spec is the **stateless** mode: a client skips the `initialize`/`initialized` handshake, can call `server/discover` to learn the supported versions and capabilities, and sends every request self-contained (`MCP-Protocol-Version` and `Mcp-Method` headers plus `_meta` client info). No `Mcp-Session-Id` is issued, so there is no session to go stale after a reload (MCP Inspector and the chat client still run in session mode).
 
 The same `/mcp` endpoint still serves session-based clients on 2025-11-25 and earlier (MCP Inspector, the LangChain4j client in `conference-chat`). Authorization is unchanged across both modes: every request, stateless or not, carries the Bearer token and passes the same gate. `McpProtocolVersionTest` pins this behaviour.
 
@@ -92,7 +92,7 @@ This is the endpoint-level gate. It is distinct from the step-up case in demo 3,
 
 ## Client registration: DCR vs CIMD
 
-An AI client has to obtain an OAuth client identity before it can run PKCE. The demo shows both mechanisms the MCP authorization spec allows, against the same realm.
+An AI client has to obtain an OAuth client identity before it can run PKCE. The demo shows both mechanisms against the same realm: CIMD, the default, and DCR, which the 2026-07-28 spec deprecates and keeps only for backwards compatibility.
 
 **Dynamic Client Registration (DCR)** has the client POST to a writeable registration endpoint and get back a generated `client_id`. To make this work for MCP Inspector, the realm clears four anonymous registration policies (documented in [`RUNBOOK.md`](RUNBOOK.md)). The talking point: "the AI got a token" is not "the AI got a useful token", every scope, role, and claim has to be consciously engineered back in.
 
@@ -104,7 +104,7 @@ An AI client has to obtain an OAuth client identity before it can run PKCE. The 
 | Server state | A stored registration record per client | None, the document is fetched on demand |
 | Registration endpoint | Writeable, must be opened and policed | None |
 | Realm setup for this demo | Four anonymous policies cleared | One experimental feature flag enabled |
-| Spec status | Supported | Preferred default since 2025-11-25 |
+| Spec status | Deprecated in 2026-07-28, kept for compatibility | Preferred default since 2025-11-25 |
 
 ## Run
 

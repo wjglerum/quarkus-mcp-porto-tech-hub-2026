@@ -151,7 +151,7 @@ Explicitly rejected to keep the demo lean:
 
 Two seeders, both idempotent, both applied on startup. **No live portotechhub.com scrape at runtime, no jsoup dependency.** The demo never depends on the internet for schedule data.
 
-1. **Static schedule seeder**: if `Session.count() == 0`, load `seed/porto-tech-hub-2026-agenda.json` from the classpath and persist every speaker and session listed there. The JSON is a one-time **snapshot of the real porto.io agenda** for Porto Tech Hub 2026 (3-4 June, Sofia Tech Park): ~32 talks across two days, ~27 speakers, including Willem Jan on the MCP talk (Hall B, day 1 10:00) and on the Concurrency Crossroads deep dive (Workshops & Deep Dives, day 1 15:20). Breaks, registration, raffle, and networking blocks are excluded -- only sessions with a speaker. Co-speakers are reduced to the primary speaker to fit the one-speaker-per-session model. Refreshing the schedule is a manual step: re-scrape porto.io and overwrite the JSON.
+1. **Static schedule seeder**: if `Session.count() == 0`, load `seed/porto-tech-hub-2026-agenda.json` from the classpath and persist every speaker and session listed there. The JSON is a one-time **snapshot of the real Porto Tech Hub 2026 schedule** (portotechhub.com, served by Sessionize) for 10 November 2026 at Alfândega do Porto: 40 sessions across eight tracks in one day, including Willem Jan on the MCP talk (Sofico track, 11:10 to 12:00). The welcome and goodbye blocks are excluded -- only sessions with a speaker. Co-speakers are reduced to the primary speaker to fit the one-speaker-per-session model. Refreshing the schedule is a manual step: re-export the Sessionize grid and overwrite the JSON.
 2. **Demo data seeder**: if `Attendee.count() == 0`, create about 10 fake attendees, around 15 bookmarks, and around 25 ratings, with at least 5 ratings on Willem Jan's sessions for the speaker feedback demo.
 
 The JSON shape is:
@@ -385,7 +385,7 @@ Deterministic, regex-driven mapping prompt -> MCP tool with extracted arguments.
 - Handle the ten quick prompts verbatim and their natural rewordings.
 - Extract `stars` (1 to 5) from phrases like "rate 5 stars".
 - Extract `comment` from `comment "..."` patterns.
-- Extract `session_query` from "the X talk" / "my Y deep dive" patterns and resolve it to a session_id via `list_sessions`.
+- Extract `session_query` from "the X talk" / "my Y talk" patterns (the MCP server strips filler words such as "my" and "talk" before searching) and resolve it to a session_id via `list_sessions`.
 - Recognise "cancel" + a "reason" tail.
 - Fall back to a friendly "I'm not sure which tool to use" message instead of guessing.
 
@@ -578,7 +578,7 @@ No Flyway. Hibernate owns the schema in dev and test (`drop-and-create`). In pro
 
 | Env var | Purpose | Default |
 |---------|---------|---------|
-| `DEMO_NOW` | Override the demo clock used by `whats_on_now`/`whats_next` and the rating cutoff. ISO with `+00:00` zone (WET). In `%dev` the default is **`2026-11-10T11:40:00+00:00`** (mid-demo Wednesday morning) so ratings work without env setup. Override only when rehearsing other times. | `2026-11-10T11:40:00+00:00` in dev, unset elsewhere |
+| `DEMO_NOW` | Override the demo clock used by `whats_on_now`/`whats_next` and the rating cutoff. ISO with `+00:00` zone (WET). In `%dev` the default is **`2026-11-10T11:40:00+00:00`** (mid-talk, Tuesday 11:40 WET) so ratings work without env setup. Override only when rehearsing other times. | `2026-11-10T11:40:00+00:00` in dev, unset elsewhere |
 | `CONFERENCE_API_URL` | Where conference-mcp / conference-chat find conference-api. | `http://localhost:8080` |
 | `CONFERENCE_MCP_URL` | Where conference-chat finds the MCP endpoint (streamable HTTP). | `http://localhost:8081/mcp` |
 | `ANTHROPIC_API_KEY` | Anthropic provider key. | unset (provider disabled) |

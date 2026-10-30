@@ -11,7 +11,7 @@
     --surface2: #1D222B;
     --border: #2A313C;
     --ink: #F5F7FA;
-    --muted: #9AA4B2;
+    --muted: #B4BECA;
     --dim: #5E6876;
     --brand: #0088D3;
     --brand-soft: #4DB3EA;
@@ -71,12 +71,12 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 24px 26px;
   }
-  .card p { color: var(--muted); font-size: 20px; margin: 0; }
+  .card p { color: var(--muted); font-size: 22px; margin: 0; }
   .card .label { font: 600 15px/1 var(--mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--brand-soft); margin-bottom: 12px; }
   .card.warn { border-color: rgba(242,166,90,.55); background: linear-gradient(180deg, rgba(242,166,90,.08), transparent 70%), var(--surface); }
   .card.warn .label { color: var(--amber); }
   .card.new { border-color: rgba(0,136,211,.6); background: linear-gradient(180deg, rgba(0,136,211,.10), transparent 70%), var(--surface); }
-  .card ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 20px; }
+  .card ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); font-size: 22px; }
   .card li { margin: 4px 0; }
 
   /* flow diagrams */
@@ -86,7 +86,7 @@
     padding: 20px 18px; text-align: center;
   }
   .node b { display: block; font-size: 24px; margin-bottom: 4px; }
-  .node span { color: var(--muted); font-size: 18px; }
+  .node span { color: var(--muted); font-size: 20px; }
   .node.hot { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
   .node.step { border-color: rgba(242,166,90,.6); }
   .arrow {
@@ -97,18 +97,18 @@
   .arrow.amber, .arrow.amber::after { color: var(--amber); }
 
   /* tables */
-  table { width: 100%; border-collapse: collapse; font-size: 19px; }
+  table { width: 100%; border-collapse: collapse; font-size: 21px; }
   th { text-align: left; color: var(--muted); font: 600 14px/1 var(--mono); letter-spacing: 1.5px; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid var(--border); }
   td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
   tr.hl td { background: rgba(0,136,211,.10); }
   tr.hl td:first-child { color: var(--brand-soft); font-weight: 700; }
-  .note { margin-top: 20px; color: var(--muted); font-size: 20px; }
+  .note { margin-top: 20px; color: var(--muted); font-size: 22px; }
 
   /* steps */
   .steps { display: grid; gap: 16px; }
   .stepline { display: flex; gap: 20px; align-items: flex-start; }
   .num { flex: 0 0 46px; height: 46px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; }
-  .stepline p { color: var(--muted); font-size: 20px; margin: 0; }
+  .stepline p { color: var(--muted); font-size: 22px; margin: 0; }
 
   /* audit record */
   .record { background: #0A0D11; border: 1px solid var(--border); border-radius: 14px; padding: 22px 28px; font: 20px/1.6 var(--mono); max-width: 980px; }
@@ -163,7 +163,7 @@
   <h1>Practical MCP Security<br>in Action</h1>
   <div class="meta">Willem Jan Glerum<br><span class="muted">Principal Software Engineer, Lunatech</span></div>
   <div><span class="where">Sofico track &nbsp;/&nbsp; Tue 10 Nov &nbsp;/&nbsp; 11:10 &nbsp;/&nbsp; Alfândega do Porto</span></div>
-  <div class="notes">Welcome. 50 minutes, three live demos, one Quarkus MCP server, now on the 2026-07-28 MCP spec.</div>
+  <div class="notes">Welcome. 50 minutes, three live demos, one MCP server on the 2026-07-28 spec. Budget: slides 8 / demo 6 / slides 7 / demo 7 / slides 5 / demo 6 / wrap 4 / buffer 7.</div>
 </section>
 
 <!-- 2 -->
@@ -204,12 +204,24 @@
 
 <!-- 5 -->
 <section class="slide">
-  <div class="eyebrow">Why MCP auth is hard</div>
-  <div class="big">MCP shipped with<br>no standard auth.</div>
-  <p class="sub">Every server rolled its own, until the 2025 spec.</p>
+  <div class="eyebrow">MCP moves fast &nbsp;/&nbsp; spec 2026-07-28</div>
+  <h2>The newest spec drops the session</h2>
+  <div class="cards cols-2" style="margin-top:22px">
+    <div class="card"><div class="label">Until 2025-11-25</div><h3>Session-based</h3><p>Handshake first, then the server hands out a session id and remembers you.</p></div>
+    <div class="card new"><div class="label">2026-07-28</div><h3>Stateless</h3><p>No handshake, no session id. Every request says who it is and what it calls. Any server instance can answer.</p></div>
+  </div>
+  <p class="tagline">Same gate on every request. <strong>No session means the token is the only identity.</strong></p>
+  <div class="notes">60-second aside. Quarkus MCP Server 2.0 serves both modes on one endpoint; the demos use session clients (Inspector, LangChain4j). Details if asked: server/discover, MCP-Protocol-Version + Mcp-Method headers, client info in _meta. Any state handle must be bound to the token's sub.</div>
 </section>
 
 <!-- 6 -->
+<section class="slide">
+  <div class="eyebrow">Why MCP auth is hard</div>
+  <div class="big">MCP shipped with<br>no standard auth.</div>
+  <p class="sub">Every server rolled its own, until the March 2025 spec.</p>
+</section>
+
+<!-- 7 -->
 <section class="slide">
   <div class="eyebrow">Your auth options</div>
   <h2>One server, many doors</h2>
@@ -218,32 +230,31 @@
     <tr><th>Approach</th><th>Identity</th><th>Revocable</th><th>Audit</th><th>Effort</th></tr>
     <tr><td>Local stdio, no auth</td><td>None</td><td>n/a</td><td>None</td><td>Trivial</td></tr>
     <tr><td>Static API key</td><td>Shared, not a user</td><td>Rotate key only</td><td>Weak</td><td>Low</td></tr>
-    <tr class="hl"><td>OAuth 2.1 + PKCE + CIMD / DCR</td><td>Real, per-user</td><td>Yes, per-token</td><td>Strong</td><td>Medium</td></tr>
-    <tr><td>Client credentials</td><td>Service, not user</td><td>Yes</td><td>Service-level</td><td>Low</td></tr>
-    <tr><td>+ mTLS / step-up</td><td>Real + assurance</td><td>Yes</td><td>Strong+</td><td>High</td></tr>
+    <tr class="hl"><td>OAuth 2.1 + PKCE</td><td>Real, per-user</td><td>Yes, per-token</td><td>Strong</td><td>Medium</td></tr>
   </table>
   <p class="note">This talk takes the medium-effort path that gets you real identity, revocability and audit.</p>
+  <div class="notes">A bearer token is a valet key: limited, revocable, tied to you. Machine-to-machine (client credentials) exists as an official MCP extension, but this talk is about acting for a user.</div>
 </section>
 
-<!-- 7 -->
+<!-- 8 -->
 <section class="slide">
   <div class="eyebrow">Three demos, three tiers</div>
   <h2>Same Porto Tech Hub 2026 schedule, real Quarkus MCP server</h2>
   <div class="cards cols-3" style="margin-top:26px">
-    <div class="card"><div class="label">Demo 1 &nbsp;/&nbsp; Public</div><h3>Browse the schedule</h3><p>OAuth 2.1 auth code + PKCE + CIMD / DCR</p></div>
+    <div class="card"><div class="label">Demo 1 &nbsp;/&nbsp; Public</div><h3>Browse the schedule</h3><p>OAuth 2.1 auth code + PKCE + CIMD</p></div>
     <div class="card"><div class="label">Demo 2 &nbsp;/&nbsp; Personal</div><h3>My agenda, my ratings</h3><p>Token propagation, full audit</p></div>
     <div class="card warn"><div class="label">Demo 3 &nbsp;/&nbsp; Sensitive</div><h3>Speaker-only actions</h3><p>Step-up authentication</p></div>
   </div>
 </section>
 
-<!-- 8 -->
+<!-- 9 -->
 <section class="slide">
   <div class="eyebrow">Demo 1 setup</div>
   <h2>One MCP client, one auth server, one Quarkus MCP server</h2>
   <div class="flow" style="margin-top:30px">
     <div class="node"><b>MCP Client</b><span>Claude / Inspector</span></div>
     <div class="arrow">register</div>
-    <div class="node"><b>Auth Server</b><span>OAuth 2.1 · CIMD / DCR · PKCE</span></div>
+    <div class="node"><b>Auth Server</b><span>OAuth 2.1 · CIMD · PKCE</span></div>
     <div class="arrow">token</div>
     <div class="node hot"><b>Quarkus MCP</b><span>tools + bearer check</span></div>
     <div class="arrow">read</div>
@@ -252,63 +263,51 @@
   <p class="note">The client gets an identity, the user consents once (PKCE-protected), and a bearer token lets the AI read the public schedule.</p>
 </section>
 
-<!-- 9 -->
+<!-- 10 -->
 <section class="slide">
   <div class="eyebrow">Demo 1</div>
   <h2>Browse the Porto Tech Hub schedule</h2>
   <div class="steps" style="margin-top:22px">
-    <div class="stepline"><div class="num">1</div><div><h3>Register the MCP client</h3><p>CIMD or Dynamic Client Registration. The MCP client introduces itself to my auth server.</p></div></div>
+    <div class="stepline"><div class="num">1</div><div><h3>Identify the MCP client</h3><p>CIMD: the client_id is a URL; my auth server reads the client's metadata from it.</p></div></div>
     <div class="stepline"><div class="num">2</div><div><h3>Log in</h3><p>OAuth 2.1 authorization code flow with PKCE. The user gives consent, once.</p></div></div>
-    <div class="stepline"><div class="num">3</div><div><h3>Ask the AI</h3><p>"What talks are happening right now?" The AI calls public tools with the bearer token.</p></div></div>
+    <div class="stepline"><div class="num">3</div><div><h3>Ask the AI</h3><p>"What's happening right now?" The AI calls public tools with the bearer token.</p></div></div>
   </div>
   <p class="tagline">Watch the URL bar. <strong>The OAuth dance is short and unmysterious.</strong></p>
 </section>
 
-<!-- 10 -->
+<!-- 11 -->
 <section class="slide center demo" data-bare>
   <div class="tag">DEMO</div>
   <h1>Browse the schedule</h1>
-  <p class="sub">Public access, OAuth 2.1, CIMD / DCR</p>
-  <div class="notes">Inspector at http://localhost:8081/mcp. 401 with resource_metadata, then PKCE login as attendee / attendee. Ask: "What's happening at Porto Tech Hub right now?" (demo clock: 11:40, Tue 10 Nov).</div>
+  <p class="sub">Public access, OAuth 2.1, CIMD</p>
+  <div class="notes">Inspector at http://localhost:8081/mcp: 401 with resource_metadata, PKCE login as attendee / attendee. "What's happening right now?" (11:40: eight sessions, including this one) then "What's coming up next?". Backup: demo-1 video.</div>
 </section>
 
-<!-- 11 -->
+<!-- 12 -->
 <section class="slide">
   <div class="eyebrow">What you just saw</div>
   <h2>Three boring acronyms, one secure flow</h2>
   <div class="cards cols-3" style="margin-top:26px">
-    <div class="card"><div class="label">CIMD / DCR</div><h3>Client identity</h3><p>Clients onboard themselves. No manual setup per MCP server.</p></div>
+    <div class="card"><div class="label">CIMD</div><h3>Client ID Metadata Document</h3><p>The client is a URL. No registration call, no manual setup per MCP server.</p></div>
     <div class="card"><div class="label">PKCE</div><h3>Proof Key for Code Exchange</h3><p>Stops stolen authorization codes from being usable.</p></div>
     <div class="card"><div class="label">Auth Code</div><h3>Authorization Code Flow</h3><p>User consents in the browser. App never sees the password.</p></div>
   </div>
 </section>
 
-<!-- 12 -->
+<!-- 13 -->
 <section class="slide">
   <div class="eyebrow">How clients register</div>
-  <h2>CIMD is the spec default since 2025-11-25</h2>
+  <h2>2026-07-28: CIMD is the default, DCR is deprecated</h2>
   <table style="margin-top:12px">
     <tr><th>Method</th><th>How it works</th><th>Trust anchor</th><th>Best for</th></tr>
-    <tr class="hl"><td>CIMD (spec default)</td><td>client_id is an HTTPS URL; server fetches the JSON metadata on demand</td><td>Domain ownership</td><td>Open ecosystems, clients you don't control</td></tr>
-    <tr><td>Dynamic Client Registration</td><td>Client POSTs metadata to /register, gets a per-server client ID</td><td>Anonymous / open endpoint</td><td>Controlled environments</td></tr>
-    <tr><td>Pre-registered / static</td><td>Admin creates the client ID + secret in the IdP ahead of time</td><td>Explicit, vetted</td><td>Fixed, known internal clients</td></tr>
-    <tr><td>Static API key</td><td>Shared key sent with each call; not a client identity</td><td>Possession of the key</td><td>Quick starts, scripts; avoid in production</td></tr>
+    <tr class="hl"><td>CIMD (recommended)</td><td>client_id is an HTTPS URL; server fetches the JSON metadata on demand</td><td>Domain ownership</td><td>Open ecosystems, clients you don't control</td></tr>
+    <tr><td>Pre-registered</td><td>Admin creates the client in the IdP ahead of time</td><td>Explicit, vetted</td><td>Fixed, known internal clients</td></tr>
+    <tr><td>DCR (deprecated)</td><td>Client POSTs metadata to /register, gets a per-server client ID</td><td>Anonymous / open endpoint</td><td>Backwards compatibility only</td></tr>
   </table>
-  <p class="note">CIMD is SHOULD, DCR is MAY. One URL beats a registration per server.</p>
+  <p class="note">One URL beats a registration per server. The demo realm still has DCR wired up, and it took four policy changes to open that door.</p>
+  <div class="notes">If asked: 2026-07-28 also makes clients validate the iss parameter in the authorization response (RFC 9207, mix-up attacks).</div>
 </section>
 
-<!-- 13 NEW -->
-<section class="slide">
-  <div class="eyebrow">New in the 2026-07-28 spec</div>
-  <h2>MCP goes stateless</h2>
-  <div class="cards cols-2" style="margin-top:22px">
-    <div class="card"><div class="label">Up to 2025-11-25</div><h3>Session-based</h3>
-      <ul><li><span class="mono">initialize</span> / <span class="mono">initialized</span> handshake</li><li>Server hands out an <span class="mono">Mcp-Session-Id</span></li><li>State lives on one server instance</li></ul></div>
-    <div class="card new"><div class="label">2026-07-28</div><h3>Stateless</h3>
-      <ul><li>Optional <span class="mono">server/discover</span>, no handshake</li><li>Every request is self-contained: <span class="mono">MCP-Protocol-Version</span>, <span class="mono">Mcp-Method</span>, client info in <span class="mono">_meta</span></li><li>No session id: any instance can answer</li></ul></div>
-  </div>
-  <p class="tagline">Auth does not change: <strong>every request still carries the bearer token and passes the same gate.</strong> Quarkus MCP Server 2.0 serves both on one endpoint.</p>
-</section>
 
 <!-- 14 -->
 <section class="slide">
@@ -342,6 +341,7 @@
     <div class="node"><b>Your API</b><span>enforces</span></div>
   </div>
   <p class="tagline">Token rides along. <strong>Identity survives every hop.</strong></p>
+  <p class="note">Next: Enterprise-Managed Authorization (ID-JAG, an official MCP extension) lets the company IdP decide which agents reach which MCP servers.</p>
 </section>
 
 <!-- 17 -->
@@ -361,7 +361,7 @@
   <div class="tag">DEMO</div>
   <h1>My agenda, my audit</h1>
   <p class="sub">Token propagation through every hop</p>
-  <div class="notes">Chat at http://localhost:8082/. "Bookmark the GraalVM talk for me" → "Show me my agenda" → "Also add the Practical MCP Security talk" → "Do I have any conflicts?" (both 11:10) → "Rate the MCP Security talk 5 stars with comment 'great use of caffeine'". Audit dashboard on screen two.</div>
+  <div class="notes">Chat at http://localhost:8082/, log out and log in as willem.jan / willem.jan first. "Bookmark the GraalVM talk for me" → "Show me my agenda" → "Also add the Practical MCP Security talk" → "Do I have any conflicts?" (both 11:10) → "Rate the MCP Security talk 5 stars with comment 'great use of caffeine'". Audit dashboard on screen two. Backup: demo-2 video.</div>
 </section>
 
 <!-- 19 -->
@@ -371,16 +371,28 @@
   <div class="record" style="margin-top:18px">
     <div class="head">audit_event</div>
     <div><span class="k">action</span><span class="v">RATE_SESSION</span></div>
-    <div><span class="k">target</span><span class="v">session:1 (Practical MCP Security)</span></div>
+    <div><span class="k">target</span><span class="v">session:… (Practical MCP Security)</span></div>
     <div><span class="k">attendee_subject</span><span class="id">willem.jan</span></div>
-    <div><span class="k">executed_by_client</span><span class="v">claude-desktop (registered via CIMD)</span></div>
-    <div><span class="k">token_iss</span><span class="v">https://auth.porto.demo/realms/porto</span></div>
+    <div><span class="k">executed_by_client</span><span class="v">conference-chat</span></div>
+    <div><span class="k">token_acr</span><span class="v">1</span></div>
+    <div><span class="k">token_iss</span><span class="v">http://localhost:…/realms/porto</span></div>
     <div><span class="k">created_at</span><span class="v">2026-11-10T11:41:14+00:00</span></div>
   </div>
   <p class="tagline">The AI didn’t rate the talk. I did. <strong>Auditable. Reversible. Attributable.</strong></p>
 </section>
 
 <!-- 20 -->
+<section class="slide">
+  <div class="eyebrow">Honest footnote</div>
+  <h2>Propagate the identity, not the token</h2>
+  <div class="cards cols-2" style="margin-top:22px">
+    <div class="card warn"><div class="label">What you just saw</div><h3>Token passthrough</h3><p>One token, two audiences. Anything that holds it can call the API directly. The MCP spec says: MUST NOT.</p></div>
+    <div class="card new"><div class="label">The fix</div><h3>Token exchange (RFC 8693)</h3><p>The MCP server swaps my token for a new one: aud=conference-api, act=conference-mcp. The audit log names me and the agent.</p></div>
+  </div>
+  <p class="tagline">Same user, narrower token per hop. <strong>Keycloak and Quarkus both support it.</strong></p>
+</section>
+
+<!-- 21 -->
 <section class="slide">
   <div class="eyebrow">Some tools need more than a login</div>
   <h2>Step-up authentication</h2>
@@ -390,44 +402,55 @@
     <div class="arrow amber"></div>
     <div class="node step"><b class="amber">Challenge</b><span>insufficient_user_authentication</span></div>
     <div class="arrow amber"></div>
-    <div class="node step"><b>Re-auth</b><span>TOTP / MFA</span></div>
+    <div class="node step"><b>Re-auth</b><span>One-time code (MFA)</span></div>
     <div class="arrow"></div>
     <div class="node hot"><b>Retry</b><span>Now allowed</span></div>
   </div>
   <p class="tagline">Server says: this tool needs MFA. <strong>Client re-authenticates. Done.</strong></p>
 </section>
 
-<!-- 21 -->
+<!-- 22 -->
 <section class="slide">
   <div class="eyebrow">Demo 3</div>
   <h2>Speaker-only tools and step-up</h2>
   <div class="cards cols-2" style="margin-top:22px">
-    <div class="card"><div class="label">Normal speaker auth</div><ul><li>Read my session feedback</li><li>Update my speaker bio</li><li>Browse my Q&amp;A queue</li></ul></div>
-    <div class="card warn"><div class="label">Requires step-up</div><ul><li>View attendee list (GDPR)</li><li>Cancel my session</li><li>Export raw feedback</li></ul></div>
+    <div class="card"><div class="label">Normal speaker auth</div><ul><li>Read my session feedback</li></ul></div>
+    <div class="card warn"><div class="label">Requires step-up</div><ul><li>View attendee list (GDPR)</li><li>Cancel my session (and undo it)</li></ul></div>
   </div>
   <p class="tagline">I will not actually cancel this talk while I'm giving it. <strong>Probably.</strong></p>
 </section>
 
-<!-- 22 -->
+<!-- 23 -->
 <section class="slide center demo" data-bare>
   <div class="tag">DEMO</div>
   <h1>Step-up authentication</h1>
   <p class="sub">Challenge, MFA, retry</p>
-  <div class="notes">Logged in as willem.jan (acr=1). "Show feedback on my sessions" → "Who signed up for my MCP Security talk?" → amber step-up card, popup at acr=urn:porto:mfa, TOTP → retry. Then "Cancel my MCP Security talk, reason is I want to go home early" and undo.</div>
+  <div class="notes">Logged in as willem.jan (acr=1). "Show feedback on my sessions" → "Who signed up for my MCP Security talk?" → amber step-up card, popup at acr=urn:porto:mfa, TOTP → retry. Then "Cancel my MCP Security talk, reason is I want to go home early", and undo straight away: "Undo the cancellation of my MCP Security talk, reason: back on track" (same tool, it toggles). Backup: demo-3 video.</div>
 </section>
 
-<!-- 23 -->
+<!-- 24 -->
 <section class="slide">
   <div class="eyebrow">Step-up in one sentence</div>
   <h2>The server, not the client,<br>decides when more proof is needed.</h2>
   <div class="cards cols-3" style="margin-top:26px">
     <div class="card"><h3>Mid-conversation</h3><p>No re-launch, no new flow.</p></div>
     <div class="card"><h3>Server-policy-driven</h3><p>Tools say what they need.</p></div>
-    <div class="card"><h3>Same protocol</h3><p>Still OAuth 2.1. Stateless or not.</p></div>
+    <div class="card"><h3>Honest caveat</h3><p>MCP standardises scope step-up (403). Assurance step-up via acr (RFC 9470) is our own contract, for now.</p></div>
   </div>
 </section>
 
-<!-- 24 -->
+<!-- 25 -->
+<section class="slide">
+  <div class="eyebrow">Beyond the token</div>
+  <h2>OAuth answers who. It does not answer what the tool says.</h2>
+  <div class="cards cols-3" style="margin-top:26px">
+    <div class="card"><h3>Prompt injection</h3><p>Data the AI reads can carry instructions. Keep sensitive tools behind a human confirmation.</p></div>
+    <div class="card"><h3>Tool poisoning</h3><p>Tool descriptions are prompts too. Pin and vet the servers you connect.</p></div>
+    <div class="card"><h3>Least privilege</h3><p>Small scopes per tool, step-up for the rest. A stolen token should be boring.</p></div>
+  </div>
+</section>
+
+<!-- 26 -->
 <section class="slide">
   <div class="eyebrow">If you remember three things</div>
   <div class="cards cols-3">
@@ -435,10 +458,10 @@
     <div class="card"><h3 class="brand" style="font-size:34px">What.</h3><p>Permissions are scoped and enforced at the server. The MCP tool is a thin door. The lock is yours.</p></div>
     <div class="card"><h3 class="brand" style="font-size:34px">Provable.</h3><p>Every action is audited with the token claims that authorized it. Replayable. Reversible where it matters.</p></div>
   </div>
-  <p class="tagline">Quarkus does the plumbing. <strong>You do the policy.</strong></p>
+  <p class="tagline">Your framework does the plumbing (here: Quarkus). <strong>You do the policy.</strong></p>
 </section>
 
-<!-- 25 -->
+<!-- 27 -->
 <section class="slide" data-bare>
   <div class="thanks">
     <div>
@@ -455,17 +478,6 @@
   </div>
 </section>
 
-<!-- 26 -->
-<section class="slide">
-  <div class="eyebrow">Demo run-sheet (presenter)</div>
-  <p class="muted" style="font-size:19px">Fallback for Demos 2 &amp; 3 (~6 min each). If anything breaks: play the recording / screenshots. Don't troubleshoot live.</p>
-  <div class="cards cols-2" style="margin-top:12px">
-    <div class="card"><div class="label">Demo 2 / Personal</div>
-      <ul><li>Bookmark the GraalVM talk; show my agenda.</li><li>Add the MCP Security talk; ask for conflicts (both 11:10).</li><li>Rate the MCP talk; open the AUDIT LOG.</li><li>Point to: action, attendee_subject, executed_by_client, token_iss.</li></ul></div>
-    <div class="card warn"><div class="label">Demo 3 / Sensitive</div>
-      <ul><li>Ask who signed up for my talk: step-up required.</li><li>TOTP challenge (<span class="mono">urn:porto:mfa</span>); complete it.</li><li>Re-issued token carries the elevated acr.</li><li>Cancel and undo; show the red audit events.</li></ul></div>
-  </div>
-</section>
 
 </div>
 
@@ -492,7 +504,6 @@
     else if (e.key === 'End') { show(slides.length - 1); }
     else if (e.key === 'n' || e.key === 'N') { document.body.classList.toggle('show-notes'); }
   });
-  document.addEventListener('click', function () { show(i + 1); });
   show((parseInt(location.hash.slice(1), 10) || 1) - 1);
 </script>
 </body>

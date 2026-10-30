@@ -6,13 +6,22 @@ Open `index.html` in any browser. No build step, no internet, no dependencies. T
 
 ## Controls
 
-- Right arrow, space, or click: next slide
+- Right arrow, space, or page down (presenter clickers): next slide. Mouse clicks do nothing, so switching windows cannot advance the deck.
 - Left arrow: previous slide
 - Home / End: first / last slide
-- `N`: toggle presenter notes (demo prompts on the three DEMO slides)
+- `N`: toggle presenter notes (timing budget, demo prompts and fallbacks)
 - `#N` in the URL jumps to slide N
 - Print to PDF at 1600 x 900 for a static copy
 
 ## Contents
 
-26 slides, carried over from the jPrime 2026 deck and updated for Porto: the venue, the demo prompts against the Porto Tech Hub schedule, the `porto` realm in the audit record, and a new slide on the stateless mode of the 2026-07-28 MCP spec. The photo on slide 2 is still a placeholder.
+27 slides, carried over from the jPrime 2026 deck and updated for Porto Tech Hub and the 2026-07-28 MCP spec:
+
+- The venue, demo prompts against the Porto Tech Hub schedule, and the `porto` realm.
+- A short aside on stateless MCP (slide 5).
+- CIMD as the default and DCR as deprecated (slide 13).
+- An honest footnote on token passthrough versus token exchange (slide 20).
+- An honest caveat that `acr` step-up is not part of MCP itself (slide 24).
+- A "beyond the token" slide on prompt injection and tool poisoning (slide 25).
+
+The presenter run-sheet lives in `RUNBOOK.md`. The photo on slide 2 is still a placeholder.
