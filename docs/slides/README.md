@@ -24,4 +24,4 @@ Open `index.html` in any browser. No build step, no internet, no dependencies. T
 - An honest caveat that `acr` step-up is not part of MCP itself (slide 24).
 - A "beyond the token" slide on prompt injection and tool poisoning (slide 25).
 
-The presenter run-sheet lives in `RUNBOOK.md`. The photo on slide 2 is still a placeholder.
+The presenter run-sheet lives in `RUNBOOK.md`.
