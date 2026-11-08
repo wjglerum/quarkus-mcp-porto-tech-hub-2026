@@ -77,6 +77,15 @@ class StepUpTest {
         given().auth().oauth2(token("attendee-only", Set.of("attendee"), MFA_ACR))
                 .when().get("/api/v1/sessions/" + id + "/attendees")
                 .then().statusCode(403);
+    }
+
+    @Test
+    void attendeesEndpointForbidsOtherSpeakersAndAuditsTheRefusal() {
+        int id = wjgSessionId();
+        // Has the speaker role, so it gets past @RolesAllowed and hits the ownership check.
+        given().auth().oauth2(token("other-speaker", Set.of("attendee", "speaker"), MFA_ACR))
+                .when().get("/api/v1/sessions/" + id + "/attendees")
+                .then().statusCode(403);
 
         // The refusal is audited even though the request's own transaction rolls back.
         given().queryParam("limit", 30)
