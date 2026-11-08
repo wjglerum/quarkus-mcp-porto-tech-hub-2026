@@ -526,6 +526,9 @@
   "scopeMappings" : [ {
     "clientScope" : "offline_access",
     "roles" : [ "offline_access" ]
+  }, {
+    "clientScope" : "attendee",
+    "roles" : [ "attendee", "speaker" ]
   } ],
   "clientScopeMappings" : {
     "account" : [ {
@@ -2424,9 +2427,34 @@
   "adminPermissionsEnabled" : false,
   "scimApiEnabled" : false,
   "clientProfiles" : {
-    "profiles" : [ ]
+    "profiles" : [ {
+      "name" : "cimd-profile",
+      "description" : "Accept MCP clients identified by a Client ID Metadata Document (CIMD).",
+      "executors" : [ {
+        "executor" : "client-id-metadata-document",
+        "configuration" : {
+          "cimd-allow-http-scheme" : true,
+          "cimd-allow-permitted-domains" : [ "host.docker.internal", "localhost", "127.0.0.1", "github.com" ],
+          "cimd-restrict-same-domain" : false,
+          "only-allow-confidential-client" : false
+        }
+      } ]
+    } ]
   },
   "clientPolicies" : {
-    "policies" : [ ]
+    "policies" : [ {
+      "name" : "cimd-policy",
+      "description" : "Client ids that are http(s) URLs on trusted hosts go through CIMD.",
+      "enabled" : true,
+      "conditions" : [ {
+        "condition" : "client-id-uri",
+        "configuration" : {
+          "is-negative-logic" : false,
+          "client-id-uri-scheme" : [ "http", "https" ],
+          "client-id-uri-allow-permitted-domains" : [ "host.docker.internal" ]
+        }
+      } ],
+      "profiles" : [ "cimd-profile" ]
+    } ]
   }
 }

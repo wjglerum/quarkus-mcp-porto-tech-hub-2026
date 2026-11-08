@@ -5,6 +5,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
+import nl.lunatech.porto.api.seed.DemoDataSeeder;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -50,6 +51,16 @@ class StepUpTest {
                 .when().get("/api/v1/sessions")
                 .then().statusCode(200)
                 .extract().jsonPath().getInt("[0].id");
+    }
+
+    @Test
+    void speakerFeedbackCarriesTheSeededInjection() {
+        // Demo 3 prompt-injection beat: attendee-written text reaches the speaker's agent through
+        // the feedback tool, without a step-up, next to a destructive tool.
+        given().auth().oauth2(token("willem.jan", Set.of("attendee", "speaker"), null))
+                .when().get("/api/v1/me/sessions/feedback")
+                .then().statusCode(200)
+                .body("ratings.flatten().comment", hasItem(DemoDataSeeder.INJECTED_COMMENT));
     }
 
     @Test
@@ -153,6 +164,38 @@ class StepUpTest {
                 .when().get("/api/v1/sessions/" + id + "/attendees")
                 .then().statusCode(401)
                 .header("WWW-Authenticate", containsString("insufficient_user_authentication"));
+    }
+
+    @Test
+    void mcpServerCanReportAStepUpRefusalForTheAudit() {
+        given().auth().oauth2(token("willem.jan", Set.of("attendee", "speaker"), "1", "conference-mcp"))
+                .header("X-Mcp-Client", "conference-chat")
+                .contentType("application/json")
+                .body("{\"tool\":\"cancel_my_session\",\"detail\":\"reason=rescheduled by organisers\"}")
+                .when().post("/api/v1/audit/refusals")
+                .then().statusCode(204);
+
+        given().queryParam("limit", 30)
+                .when().get("/api/v1/audit/recent")
+                .then().statusCode(200)
+                .body("find { it.action == 'CANCEL_SESSION_ATTEMPTED_WITHOUT_STEP_UP' }.detail",
+                        equalTo("reason=rescheduled by organisers"))
+                .body("find { it.action == 'CANCEL_SESSION_ATTEMPTED_WITHOUT_STEP_UP' }.executedByClient",
+                        equalTo("conference-chat via conference-mcp"));
+    }
+
+    @Test
+    void onlyTheMcpServerMayReportStepUpRefusals() {
+        given().auth().oauth2(token("willem.jan", Set.of("attendee", "speaker"), "1", "conference-chat"))
+                .contentType("application/json")
+                .body("{\"tool\":\"cancel_my_session\",\"detail\":\"forged\"}")
+                .when().post("/api/v1/audit/refusals")
+                .then().statusCode(403);
+        given().auth().oauth2(token("willem.jan", Set.of("attendee", "speaker"), "1", "conference-mcp"))
+                .contentType("application/json")
+                .body("{\"tool\":\"whats_on_now\",\"detail\":\"not a step-up tool\"}")
+                .when().post("/api/v1/audit/refusals")
+                .then().statusCode(400);
     }
 
     @Test

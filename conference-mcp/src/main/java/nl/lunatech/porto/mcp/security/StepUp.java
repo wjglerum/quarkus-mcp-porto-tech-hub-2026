@@ -29,7 +29,7 @@ public class StepUp {
         return satisfied() ? MFA_ACR : String.valueOf((Object) jwt.getClaim("acr"));
     }
 
-    private boolean satisfied() {
+    public boolean satisfied() {
         String acr = String.valueOf((Object) jwt.getClaim("acr"));
         // "2" covers a realm without the acr.loa.map alias
         return MFA_ACR.equals(acr) || "2".equals(acr);

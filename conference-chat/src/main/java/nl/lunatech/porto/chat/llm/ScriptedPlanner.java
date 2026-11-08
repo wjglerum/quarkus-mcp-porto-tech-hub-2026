@@ -28,6 +28,9 @@ public class ScriptedPlanner {
     private static final List<Rule> RULES = List.of(
             new Rule(List.of("undo", "cancel"), "cancel_my_session",
                     args("session_query", MCP_TALK, "reason", "back on track", "undo", true)),
+            // Demo 3 injection beat: another speaker's talk, refused by the API's ownership check.
+            new Rule(List.of("cancel", "graalvm"), "cancel_my_session",
+                    args("session_query", "GraalVM", "reason", "rescheduled by organisers")),
             new Rule(List.of("cancel"), "cancel_my_session",
                     args("session_query", MCP_TALK, "reason", "I want to go home early")),
             new Rule(List.of("signed up"), "view_session_attendees", args("session_query", MCP_TALK)),

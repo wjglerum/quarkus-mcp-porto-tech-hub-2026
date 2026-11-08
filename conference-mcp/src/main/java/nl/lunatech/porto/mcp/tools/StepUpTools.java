@@ -1,6 +1,7 @@
 package nl.lunatech.porto.mcp.tools;
 
 import io.quarkiverse.mcp.server.Tool;
+import io.quarkus.logging.Log;
 import io.quarkiverse.mcp.server.ToolArg;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -9,6 +10,7 @@ import nl.lunatech.porto.mcp.api.MeConferenceApi;
 import nl.lunatech.porto.mcp.dto.AttendeeBookmarkDto;
 import nl.lunatech.porto.mcp.dto.CancelSessionRequest;
 import nl.lunatech.porto.mcp.dto.SessionDto;
+import nl.lunatech.porto.mcp.dto.StepUpRefusalRequest;
 import nl.lunatech.porto.mcp.security.StepUp;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
@@ -38,7 +40,7 @@ public class StepUpTools {
     public List<AttendeeBookmarkDto> viewSessionAttendees(
             @ToolArg(name = "session_id", description = SessionResolver.SESSION_ID, required = false) Long sessionId,
             @ToolArg(name = "session_query", description = SessionResolver.SESSION_QUERY, required = false) String sessionQuery) {
-        stepUp.require();
+        requireStepUp("view_session_attendees", describe(sessionId, sessionQuery, null));
         return me.sessionAttendees(sessions.resolve(sessionId, sessionQuery));
     }
 
@@ -58,8 +60,31 @@ public class StepUpTools {
             @ToolArg(name = "undo",
                     description = "true to restore a cancelled session; omit or false to cancel it.",
                     required = false) Boolean undo) {
-        stepUp.require();
+        requireStepUp("cancel_my_session", describe(sessionId, sessionQuery, reason)
+                + (Boolean.TRUE.equals(undo) ? " undo=true" : ""));
         return me.cancelSession(sessions.resolve(sessionId, sessionQuery),
                 new CancelSessionRequest(reason, Boolean.TRUE.equals(undo)));
+    }
+
+    /**
+     * Refuses without MFA, and first reports the refusal to conference-api so it lands in the
+     * audit log. The report is best effort: if it fails, the refusal still stands.
+     */
+    private void requireStepUp(String tool, String detail) {
+        if (stepUp.satisfied()) return;
+        try {
+            me.reportStepUpRefusal(new StepUpRefusalRequest(tool, detail));
+        } catch (RuntimeException e) {
+            Log.warnf("Could not audit the step-up refusal of %s: %s", tool, e.getMessage());
+        }
+        stepUp.require();
+    }
+
+    private static String describe(Long sessionId, String sessionQuery, String reason) {
+        StringBuilder sb = new StringBuilder();
+        if (sessionId != null) sb.append("session_id=").append(sessionId);
+        if (sessionQuery != null) sb.append(sb.isEmpty() ? "" : " ").append("session_query=").append(sessionQuery);
+        if (reason != null) sb.append(sb.isEmpty() ? "" : " ").append("reason=").append(reason);
+        return sb.toString();
     }
 }

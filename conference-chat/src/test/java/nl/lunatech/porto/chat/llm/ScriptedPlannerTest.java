@@ -27,6 +27,10 @@ class ScriptedPlannerTest {
                 "Undo the cancellation of my MCP Security talk, reason: back on track.").orElseThrow();
         assertEquals("cancel_my_session", undo.tool());
         assertEquals(true, undo.args().get("undo"));
+        LlmToolPlanner.Plan other = planner.plan(
+                "Cancel the GraalVM talk, reason: rescheduled by organisers.").orElseThrow();
+        assertEquals("cancel_my_session", other.tool());
+        assertEquals("GraalVM", other.args().get("session_query"));
     }
 
     @Test

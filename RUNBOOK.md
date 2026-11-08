@@ -58,7 +58,7 @@ Open `http://localhost:8080/audit-live/` on the second monitor.
 4. From the Dev UI Keycloak tile, copy the realm URL. Paste `http://<dev-keycloak-url>/.well-known/openid-configuration` into a browser tab and confirm 200.
 5. Hit `http://localhost:8082/` in a browser; log in as `attendee / attendee`. The Qute shell renders with the quick prompts. Click *"What's happening right now?"* once: a real answer proves the API key and the MCP connection.
 6. Start the apps (and so Keycloak) at least 15 minutes before the slot; the first container start is the slow one.
-7. Venue wifi: tether to a phone hotspot for the LLM. Install Inspector beforehand (`npm install -g @modelcontextprotocol/inspector`) so it doesn't need an `npx` download on stage.
+7. Venue wifi: tether to a phone hotspot for the LLM. Run `npx -y @modelcontextprotocol/inspector@latest` once beforehand so the download is cached, and leave Inspector's `porto-conference` server configured for CIMD (see "Drive it from Inspector").
 8. Do one full dry run after a clean Postgres restart (see Recovery) so the seeds and the cancellation are reset. Then restart once more: the dry run leaves your bookmarks, rating and cancellation behind.
 9. Notifications off, sleep off, backup videos queued.
 10. LLM fallback: if the model fails, the chat answers the sidebar and runbook prompts from a scripted planner and says so in the reply ("Scripted fallback (LLM unavailable)"). With no network at all, restart `conference-chat` with `DEMO_PLANNER=scripted` so nothing waits on a timeout. Every tool also runs from MCP Inspector.
@@ -68,15 +68,26 @@ Open `http://localhost:8080/audit-live/` on the second monitor.
 | Block | Minutes |
 |-------|---------|
 | Slides before Demo 1 | 8 |
-| Demo 1 | 6 |
-| Slides between | 7 |
+| Demo 1, including CIMD live | 7 |
+| Slides between, including DCR versus CIMD | 6 |
 | Demo 2 | 7 |
 | Slides between | 5 |
-| Demo 3 | 6 |
+| Demo 3, including the injection beat | 8 |
 | Wrap-up | 4 |
-| Buffer / Q&A | 7 |
+| Buffer / Q&A | 5 |
 
-Do the DCR versus CIMD contrast in Demo 1 on the slide, not live, if the clock is tight.
+The demo headings below carry the same minutes as this table. If a rehearsal runs over, cut from the demo, not from Buffer / Q&A.
+
+## Client registration on slides
+
+CIMD is shown live at the end of Demo 1. DCR is not: its Keycloak policy details are interesting to people who run Keycloak and noise to everyone else. The slides between Demo 1 and Demo 2 put the two side by side and carry:
+
+- DCR: the client POSTs to a writeable registration endpoint. Making it work for Inspector meant clearing three anonymous registration policies; Consent Required stays on as the last guard. Talking point: "the AI got a token" is not "the AI got a useful token".
+- CIMD: the `client_id` is a URL, Keycloak fetches the metadata document, nothing is stored.
+- The comparison table from "DCR vs CIMD, the punchline" below, and its punchline: DCR keeps a writeable door open and asks you to lock it down, CIMD removes the door.
+- Spec status: CIMD recommended since 2025-11-25, DCR deprecated in 2026-07-28 and kept only for authorization servers that do not support CIMD yet. Keycloak is that case today: CIMD is an experimental feature flag, which is why the realm still allows DCR.
+
+The DCR section below stays as rehearsal material and as the backup if someone asks to see it live in Q&A. The CIMD section is what Demo 1 step 6 runs.
 
 ## MCP Inspector and Dynamic Client Registration (DCR)
 
@@ -115,11 +126,9 @@ One deliberate spec deviation to mention if asked: the CIMD draft requires the `
 
 ### Why host.docker.internal
 
-Keycloak runs inside a Dev Services container and must fetch the metadata document itself. From inside the container the host is reachable as `host.docker.internal`. For the URL to resolve identically on the host where Inspector runs, add this line to `/etc/hosts` once:
+Keycloak runs inside a Dev Services container and must fetch the metadata document itself. From inside the container the host is reachable as `host.docker.internal`, so that is the host in the `client_id` URL.
 
-```
-127.0.0.1 host.docker.internal
-```
+Inspector never resolves that name: it only sends the URL as a string. The CIMD login worked on 8 November 2026 without a `/etc/hosts` entry. You only need `127.0.0.1 host.docker.internal` in `/etc/hosts` to run the `curl http://host.docker.internal:8081/...` check in Recovery from your own shell.
 
 ### Enable CIMD on Keycloak
 
@@ -129,7 +138,20 @@ CIMD is an experimental Keycloak feature (verified present in the Dev Services i
 quarkus.keycloak.devservices.features=cimd
 ```
 
-already present in all three `application.properties` files. Because Dev Services reuses the shared Keycloak container, the feature only takes effect after the container is recreated. If the running container predates this setting, recycle it with the "Reload the realm" procedure below, then restart the apps.
+already present in all three `application.properties` files.
+
+The feature flag alone is not enough. Three more pieces are in place, and each one failed in its own way when missing (checked 8 November 2026):
+
+| Piece | Where | Symptom without it |
+|-------|-------|--------------------|
+| Client policy `cimd-policy`, condition `client-id-uri`: scheme `http`/`https`, Trusted domains `host.docker.internal` | `keycloak-realm.json` | "Client not found": Keycloak treats the URL as an unknown client id |
+| Client profile `cimd-profile`, executor `client-id-metadata-document`: Allow http scheme on, Trusted domains `host.docker.internal`, `localhost` and `127.0.0.1` (redirect URIs), `github.com` (`client_uri`) | `keycloak-realm.json` | "Invalid Client ID: domain not allowed" |
+| Realm role scope mapping on the `attendee` client scope: roles `attendee`, `speaker` | `keycloak-realm.json` (`scopeMappings`) | Sign-in works but `/mcp` answers 403 `insufficient_scope`: Keycloak creates CIMD clients with full scope off, so without the mapping the token carries no realm roles |
+| `%dev.quarkus.http.host-validation.allowed-hosts=localhost,127.0.0.1,host.docker.internal` | `conference-mcp` `application.properties` | "Client Metadata fetch failed": Quarkus answers Keycloak's fetch with 400, because it rejects non-localhost `Host` headers when bound to localhost |
+
+Allow http scheme and the http condition scheme are demo-only, like the HTTP `client_id` itself. The realm changes need a fresh Keycloak container (see "Reload the realm").
+
+Because Dev Services reuses the shared Keycloak container, the feature only takes effect after the container is recreated. If the running container predates this setting, recycle it with the "Reload the realm" procedure below, then restart the apps.
 
 Confirm the feature is live from the Keycloak startup log:
 
@@ -141,9 +163,17 @@ docker logs $(docker ps -q --filter "label=quarkus-dev-service-keycloak=porto-ke
 
 ### Drive it from Inspector
 
-Point Inspector at `http://localhost:8081/mcp` as usual. In a CIMD-capable build, set the client id to the metadata URL rather than running DCR. Inspector sends the URL as `client_id`, Keycloak fetches the document (visible in the Keycloak log as an outbound GET for `/cimd/mcp-inspector.json`), then runs PKCE and the normal login.
+Verified with MCP Inspector v2.14.0 on 8 November 2026:
 
-If the Inspector build on hand does not yet emit a URL `client_id`, drive the contrast manually and show the authorization request on the second screen:
+1. Run `npx -y @modelcontextprotocol/inspector@latest`. Without `@latest`, `npx` may start a cached v1, which is deprecated. v2 warns that it wants Node 22.23.4 or newer but ran on 22.15.1. It opens on `http://127.0.0.1:6274`, so its redirect URI is `http://127.0.0.1:6274/oauth/callback`. The metadata document lists both the `127.0.0.1` and the `localhost` variants.
+2. Add a server: Streamable HTTP, URL `http://localhost:8081/mcp`.
+3. In that server's **Settings → OAuth Settings**: Client ID `http://host.docker.internal:8081/cimd/mcp-inspector.json`, Scopes `openid attendee`, and **untick "Request refresh token"**. Left on, Inspector adds `offline_access`, which the metadata document does not declare, and Keycloak answers `invalid_scope`.
+4. Connect. Keycloak fetches the document (`GET /cimd/mcp-inspector.json` in the `conference-mcp` access log), shows the login, then a consent screen naming "MCP Inspector (CIMD demo client)" and "The client's hostname is host.docker.internal". That consent screen is a good stage moment: the server is telling the user which URL vouches for this client.
+5. Run `list_sessions` to show the token works.
+
+Keycloak stores what it fetched as a client in the realm and keeps it for at least 5 minutes (`cimd.cache.expiry.time.in.sec` on that client). After editing `mcp-inspector.json`, wait that out or recycle Keycloak. Inspector also keeps its tokens: after a realm change, use **Clear stored OAuth state** in the server settings before reconnecting.
+
+If Inspector misbehaves on stage, drive the contrast manually and show the authorization request on the second screen:
 
 ```bash
 KC=$(curl -s http://localhost:8081/.well-known/oauth-protected-resource | jq -r '.authorization_servers[0]')
@@ -161,22 +191,22 @@ Watch the Keycloak log: it fetches the metadata document before rendering the lo
 
 ### DCR vs CIMD, the punchline
 
-The DCR section above had to clear three anonymous client-registration policies just to let Inspector register, and keeps a consent prompt to make up for trusting an unknown client. None of them apply under CIMD, because nothing is being written:
+The DCR section above had to clear three anonymous client-registration policies just to let Inspector register, and keeps a consent prompt to make up for trusting an unknown client. Under CIMD the client writes nothing: Keycloak reads the document and caches it as a client record on its own terms.
 
 | Concern under DCR | Under CIMD |
 |-------------------|------------|
 | Allowed Client Scopes policy rejected the `openid` scope | No registration step, scope is requested at authorization time as normal |
 | Trusted Hosts policy rejected the `client_uri` and the sender IP | No registration call to police, the client identity is a document the server reads |
-| Full Scope Disabled stripped realm roles from the token | No DCR-specific stripping, the realm role and username mappers apply as usual |
+| Full Scope Disabled stripped realm roles from the token | Keycloak also creates CIMD clients with full scope off. Here the fix is a role scope mapping on the `attendee` client scope, so a client gets the roles only by asking for that scope |
 | Consent Required is the only guard against an unvetted client getting a token silently | The client identity is a URL the server fetches and whose redirect URIs it checks |
 | The open anonymous registration endpoint is a standing write surface | There is no writeable registration endpoint at all |
 
 Talking point: **DCR makes the authorization server keep a writeable door open, then asks you to pick which locks to remove and which to keep. CIMD removes the door. The client introduces itself with a URL the server reads, nothing is stored, and there is no registration surface to attack.**
 
-## Demo 1: Public schedule lookup (~8 min)
+## Demo 1: Public schedule lookup and CIMD (~7 min)
 
-1. Open the MCP client: the conference-chat browser at `http://localhost:8082/`, or MCP Inspector pointed at `http://localhost:8081/mcp`.
-2. Log in as **attendee / attendee** (chat) or run DCR (Inspector).
+1. Open the conference-chat browser at `http://localhost:8082/`. MCP Inspector at `http://localhost:8081/mcp` is the backup client only.
+2. Log in as **attendee / attendee**.
 3. Ask: *"What's happening right now?"* (calls `whats_on_now`). At 11:40 that is eight sessions, including this talk.
 4. Ask: *"What's coming up next?"* (calls `whats_next`).
 5. Highlight PKCE: the `conference-chat` terminal logs a line on every login, e.g.
@@ -185,13 +215,15 @@ Talking point: **DCR makes the authorization server keep a writeable door open, 
    ```
    Point at it on the terminal (it survives the redirect, unlike the URL bar). Then show the access token decoded in the inspector.
 
-6. **Registration contrast.** Show how the Inspector got its client identity two ways. First DCR: the three policies you had to clear so Keycloak would accept a dynamically registered client, and the consent screen that stays (see the DCR section above). Then CIMD: the same Inspector identified by a URL `client_id`, with Keycloak fetching the metadata document and zero policy surgery (see the CIMD section above). Land the punchline: DCR keeps a writeable registration door open and asks you to lock it down, CIMD removes the door.
+6. **CIMD live.** Switch to MCP Inspector, pointed at `http://localhost:8081/mcp`, and sign in with the URL `http://host.docker.internal:8081/cimd/mcp-inspector.json` as the client id (see "Drive it from Inspector" above). On the second screen, show the Keycloak log line where it fetches `/cimd/mcp-inspector.json` before rendering the login page. Say: *"No registration call. The client id is a URL, Keycloak just read it."* If the Inspector build can't send a URL client id, use the manual authorization request from the same section; the point is the fetch, not the callback.
 
-Talking points: **PKCE, CIMD as the recommended path, DCR as the deprecated legacy path (deprecated in the 2026-07-28 spec), why client identity matters for AI clients.**
+Talking points: **PKCE, CIMD as the recommended way for an AI client to get an identity, why client identity matters for AI clients.**
 
 The audit dashboard shows nothing new (read-only tools do not audit). Tell the audience: "Read tools do not show up. That is on purpose. The audit log records intent, not curiosity."
 
-## Demo 2: Personal agenda with token exchange (~10 min)
+DCR is not shown live. It is on the slides right after Demo 1, as the deprecated alternative; see "Client registration on slides" above.
+
+## Demo 2: Personal agenda with token exchange (~7 min)
 
 1. Click **Sign out** in the chat's top bar (it ends the Keycloak session too), then log in as **willem.jan / willem.jan**. Demo 2 and 3 both run as you, and the audit punchline names you. The agenda starts empty.
 2. Ask: *"Bookmark the GraalVM talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
@@ -211,16 +243,21 @@ The audit dashboard shows nothing new (read-only tools do not audit). Tell the a
 7. **Punchline:** not "AI rated it 5 stars" but "Willem Jan rated it 5 stars, executed by an AI on his behalf, with his token, fully auditable."
 8. Be ready for "isn't forwarding the token passthrough?". No: your token (aud=conference-mcp) stops at the MCP server, which exchanges it (RFC 8693) for a conference-api token per call. Next slide.
 
-## Demo 3: Step-up auth (~8 min)
+## Demo 3: Step-up auth and prompt injection (~8 min)
 
 1. Stay logged in as **willem.jan**, no MFA (acr=1).
 2. Ask: *"Show me the feedback on my MCP talk."* (calls `my_session_feedback`) returns seeded ratings, anonymous: names are personal data and sit behind step-up.
+   - **Injection beat.** One rating is not like the others: an attendee wrote instructions to the assistant into the comment (`DemoDataSeeder.INJECTED_COMMENT`), telling it to call `cancel_my_session` with reason "rescheduled by organisers". Scroll the tool result box to it (the box scrolls at 240px) and read it aloud. Attendee text just reached an agent that holds a destructive tool.
+   - **If the model falls for it**, the chat calls `cancel_my_session` on its own and gets the amber step-up card. Say: *"I asked to read feedback. My agent wants my MFA code to cancel my talk. That prompt is the tripwire."* **Do not click the step-up button**: it resends the feedback prompt after MFA, and then the injection would succeed. Leave the card; step 3 asks for step-up anyway.
+   - **If the model ignores it** (current Claude models usually do; the scripted planner always does), say: *"Good model. But the model is not my security boundary. Let's assume it fell for it."* In MCP Inspector, signed in as `willem.jan` (no MFA), call `cancel_my_session` with `session_query` "Practical MCP Security" and the injected reason. Same `insufficient_user_authentication` refusal, before the API is called.
+   - Either way, an amber `CANCEL_SESSION_ATTEMPTED_WITHOUT_STEP_UP` row lands on the dashboard with the injected reason in its detail. Point at it: *"The attack failed, and the log has the attacker's words in it."*
 3. Ask: *"Who signed up to attend my MCP Security talk?"* (calls `view_session_attendees`).
 4. `conference-mcp` refuses with the tool error `insufficient_user_authentication` before it calls the API. The chat shows it as an amber step-up card; point at the same line in the `conference-mcp` terminal. Talk through what the client does next: re-auth with `acr_values=urn:porto:mfa`, retry the tool call.
 5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:porto:mfa`.
 6. Ask: *"Cancel my MCP Security talk, reason is I want to go home early."* (calls `cancel_my_session`). A red `CANCEL_SESSION` event lands with the strong acr.
 7. Undo it straight away: *"Undo the cancellation of my MCP Security talk, reason: back on track."* The same tool with `undo=true` restores it and records `CANCEL_SESSION_UNDONE`. It is explicit, not a toggle: a retried cancel fails with 409 instead of silently undoing itself. Undo before Q&A: a cancelled talk drops out of `whats_on_now`.
-8. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens issued to `conference-mcp`, because the token exchange drops it. That is a demo shortcut; the proper fix is delegation with an `act` claim.
+8. **The honest caveat.** You now hold an MFA token. Say: *"If my agent read that comment now, step 6 is exactly what it would do, and it would work."* `conference-mcp` checks the `acr` claim, not how recent the MFA was. What still holds: ask *"Cancel the GraalVM talk, reason: rescheduled by organisers."* The tool passes step-up, the API refuses on ownership (403), and a `CANCEL_SESSION_ATTEMPTED` row lands on the dashboard. *"The agent was fooled, the call was made, and the API said no, and wrote down that someone tried."* Then the slide: a destructive call should show the user the exact tool and arguments and wait for a yes, every time. This client doesn't, and that's the gap.
+9. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens issued to `conference-mcp`, because the token exchange drops it. That is a demo shortcut; the proper fix is delegation with an `act` claim.
 
 Talking points: **step-up is server-driven: the tool decides it needs more proof. Honest caveat: MCP itself only standardises scope step-up (403 `insufficient_scope`); assurance step-up with `acr` (RFC 9470) is a contract between this server and this client.**
 
@@ -232,7 +269,11 @@ Talking points: **step-up is server-driven: the tool decides it needs more proof
 | Inspector DCR fails (rejected policy, 403 on tools, claimless token, or no consent screen) | The running Keycloak is using a stale realm. Recycle it so the realm re-imports (see "Reload the realm" below). |
 | `/mcp` returns `403 insufficient_scope` | The token authenticates but its realm roles do not include `attendee`. Log in as `attendee`, `willem.jan`, or `admin-demo`; all three carry it. |
 | CIMD: Keycloak does not fetch the metadata document, or `invalid_client` | The `cimd` feature is not active on the running container, or the container predates the `features=cimd` setting. Recycle Keycloak (see "Reload the realm"), then check the startup log for `features enabled: cimd`. |
+| CIMD: "Client not found" or "domain not allowed" | The running Keycloak predates the `cimd-policy` / `cimd-profile` in the realm. Recycle Keycloak (see "Reload the realm"). |
+| CIMD: "Client Metadata fetch failed" | `conference-mcp` answered the fetch with 400 (look for `GET /cimd/mcp-inspector.json ... 400` in its access log). Check the `%dev.quarkus.http.host-validation.allowed-hosts` line is still in its `application.properties`. |
 | CIMD: Keycloak cannot reach the metadata URL | `host.docker.internal` is not resolvable. Add `127.0.0.1 host.docker.internal` to `/etc/hosts` and confirm `curl http://host.docker.internal:8081/cimd/mcp-inspector.json` returns the document. |
+| The injection actually cancelled the MCP talk | Ask *"Undo the cancellation of my MCP Security talk, reason: back on track."* (needs MFA). Turn it into the point: this is the caveat from Demo 3 step 8, live. |
+| Injected comment missing from the feedback | The database predates the seed change. Reset Postgres (see "Audit log shows stale rehearsal data"). |
 | `whats_on_now` returns nothing | Confirm `DEMO_NOW` env var is set, then `q` and restart `conference-api`. |
 | Audit dashboard frozen | Hard refresh the browser tab; the poll is every 2 seconds. |
 | Audit log shows stale rehearsal data | `docker rm -f` the Dev Services Postgres container and restart `conference-api`. Hibernate `drop-and-create` plus the seeders give you a clean slate. |

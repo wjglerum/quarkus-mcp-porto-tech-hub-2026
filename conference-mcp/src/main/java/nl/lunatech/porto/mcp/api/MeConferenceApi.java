@@ -20,6 +20,7 @@ import nl.lunatech.porto.mcp.dto.CreateRatingRequest;
 import nl.lunatech.porto.mcp.dto.RatingDto;
 import nl.lunatech.porto.mcp.dto.SessionDto;
 import nl.lunatech.porto.mcp.dto.SessionFeedbackDto;
+import nl.lunatech.porto.mcp.dto.StepUpRefusalRequest;
 import nl.lunatech.porto.mcp.security.StepUp;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
@@ -71,6 +72,10 @@ public interface MeConferenceApi {
     @POST
     @Path("/sessions/{id}/cancel")
     SessionDto cancelSession(@PathParam("id") Long sessionId, CancelSessionRequest req);
+
+    @POST
+    @Path("/audit/refusals")
+    void reportStepUpRefusal(StepUpRefusalRequest req);
 
     /**
      * Translates non-2xx backend responses into MCP {@link ToolCallException}s with stable,

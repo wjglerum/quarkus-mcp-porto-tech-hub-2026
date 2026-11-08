@@ -106,7 +106,7 @@ Keycloak 26.7 added token exchange *delegation* with an `act` claim as an experi
 
 ## Client registration: DCR vs CIMD
 
-An AI client has to obtain an OAuth client identity before it can run PKCE. The demo shows both mechanisms against the same realm: CIMD, the recommended path, and DCR, which the 2026-07-28 spec deprecates and keeps only for backwards compatibility.
+An AI client has to obtain an OAuth client identity before it can run PKCE. The demo shows both mechanisms against the same realm: CIMD, the recommended path, and DCR, which the 2026-07-28 spec deprecates and keeps only for backwards compatibility with authorization servers that do not support CIMD yet. Keycloak is one of them: its CIMD support is still an experimental feature.
 
 **Dynamic Client Registration (DCR)** has the client POST to a writeable registration endpoint and get back a generated `client_id`. To make this work for MCP Inspector, the realm clears three anonymous registration policies and keeps the consent prompt (documented in [`RUNBOOK.md`](RUNBOOK.md)). The talking point: "the AI got a token" is not "the AI got a useful token", every scope, role, and claim has to be consciously engineered back in.
 
@@ -117,8 +117,8 @@ An AI client has to obtain an OAuth client identity before it can run PKCE. The 
 | Client identity | Generated `client_id` from a registration call | An HTTPS URL that is the `client_id` |
 | Server state | A stored registration record per client | None, the document is fetched on demand |
 | Registration endpoint | Writeable, must be opened and policed | None |
-| Realm setup for this demo | Three anonymous policies cleared, consent kept | One experimental feature flag enabled |
-| Spec status | Deprecated in 2026-07-28, kept for compatibility | Recommended since 2025-11-25 |
+| Realm setup for this demo | Three anonymous policies cleared, consent kept | An experimental feature flag, a client policy and profile that say which URLs to trust, and a role scope mapping on the `attendee` scope |
+| Spec status | Deprecated in 2026-07-28, kept for authorization servers without CIMD | Recommended since 2025-11-25 |
 
 ## Run
 
@@ -157,9 +157,9 @@ Open the page on a secondary monitor and run the demos. New events appear within
 
 See [`RUNBOOK.md`](RUNBOOK.md) for the moment-by-moment script of the three live demos:
 
-1. **Public** browse the schedule. PKCE + Authorization Code Flow, with client identity via DCR and via CIMD.
+1. **Public** browse the schedule. PKCE + Authorization Code Flow, and MCP Inspector getting its client identity through CIMD, live. DCR is covered on slides.
 2. **Personal** agenda, ratings, conflicts. Token exchange per hop, full audit.
-3. **Sensitive** speaker-only tools with step-up MFA. Server-driven challenge.
+3. **Sensitive** speaker-only tools with step-up MFA. Server-driven challenge, and an indirect prompt injection in attendee feedback that step-up and the API's ownership check contain.
 
 ## Brand palette (lifted from the deck)
 

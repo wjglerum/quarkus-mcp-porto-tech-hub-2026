@@ -6,14 +6,26 @@ The security decisions behind the demo, and the shortcuts it takes on purpose. T
 
 Every MCP tool sits in one tier. The tier decides what the token must carry, and the API checks the same thing again.
 
+"Public" means public data, not anonymous access: the schedule is open on `conference-api`, but every MCP call needs a token, because the whole `/mcp` endpoint is gated. An MCP server that reaches private tools on the same endpoint should not have an unauthenticated door.
+
 | Tier | Tools | Requires | Audited |
 |------|-------|----------|---------|
 | Public | `list_sessions`, `get_session`, `whats_on_now`, `whats_next` | a token with the `attendee` scope (the whole `/mcp` endpoint) | no |
 | Attendee | `bookmark_session`, `unbookmark_session`, `my_agenda`, `my_conflicts`, `rate_session`, `my_ratings` | role `attendee` | writes only |
 | Speaker | `my_session_feedback` | role `speaker` | no; ratings are shown without attendee names |
-| Speaker, step-up | `view_session_attendees`, `cancel_my_session` | role `speaker` and `acr=urn:porto:mfa` | yes, refusals included |
+| Speaker, step-up | `view_session_attendees`, `cancel_my_session` | role `speaker` and `acr=urn:porto:mfa` | yes, including the API's refusals |
 
 Read tools don't write audit rows: the log records intent, not curiosity. A refused attempt (another speaker's session) is written in its own transaction, so the rollback of the refused request doesn't erase it.
+
+A missing step-up is refused earlier, in `conference-mcp`, before the step-up endpoint is called: only it sees the user's own `acr`. It reports the refusal to `POST /api/v1/audit/refusals` first, which records `CANCEL_SESSION_ATTEMPTED_WITHOUT_STEP_UP` or `VIEW_SESSION_ATTENDEES_ATTEMPTED_WITHOUT_STEP_UP` with the arguments the agent sent. During a prompt injection that row is the first sign that something asked for more than the user did. The endpoint accepts reports only on tokens issued to `conference-mcp` and only for the two step-up tools, so nothing else can write to the log through it. The report is best effort: if it fails, the refusal still stands.
+
+## Untrusted content
+
+`my_session_feedback` returns comments that attendees wrote, so attendee text reaches the speaker's agent, and that agent can also call `cancel_my_session`. The demo seeds one comment with an injected instruction (`DemoDataSeeder.INJECTED_COMMENT`) to show this on stage. What contains it:
+
+- **Step-up.** Before MFA, the injected call stops at `conference-mcp` and the client shows an unexpected step-up prompt.
+- **Ownership in the API.** After MFA, an injected call still cannot touch another speaker's session, and that refusal is audited.
+- **What does not contain it.** After MFA, an injected cancel of the speaker's *own* session goes through: `conference-mcp` checks the `acr` claim, not how recent the MFA was. The fix is per-action confirmation in the client, which this demo does not have.
 
 ## Trust boundaries
 
@@ -33,7 +45,7 @@ Read tools don't write audit rows: the log records intent, not curiosity. A refu
 These are deliberate, and each should be called out if someone asks:
 
 - **Trusted hop headers.** `conference-mcp` tells the API the `acr` it verified and the client the user signed in with (`X-Mcp-Acr`, `X-Mcp-Client`). The API honours them only on tokens issued to `conference-mcp`. The proper fix is token exchange delegation with an `act` claim, still preview in Keycloak 26.8.
-- **CIMD over plain HTTP.** The spec requires an HTTPS `client_id`. The demo serves it over HTTP on `host.docker.internal`.
+- **CIMD over plain HTTP.** The spec requires an HTTPS `client_id`. The demo serves it over HTTP on `host.docker.internal`, which needs two more demo-only settings: the realm's `cimd-profile` has **Allow http scheme** on (and `cimd-policy` matches `http` client ids), and `conference-mcp` accepts the `Host: host.docker.internal` header in dev (`%dev.quarkus.http.host-validation.allowed-hosts`) so Keycloak's fetch from inside its container isn't rejected. A real deployment serves the metadata document over HTTPS on a public host and needs neither.
 - **Open audit feed.** `/api/v1/audit/recent` and `/audit-live/` need no login so they can run on the second screen. A real deployment puts them behind an auditor role.
 - **Scripted fallback planner.** If the LLM is unreachable, `conference-chat` maps the rehearsed prompts to tool calls itself and says so in the reply. The MCP calls, tokens and audit trail are identical.
 - **Demo clock.** `DEMO_NOW` pins "now" to 10 November 2026, 11:40 venue time, so `whats_on_now` and the rating cutoff behave the same in every rehearsal.
