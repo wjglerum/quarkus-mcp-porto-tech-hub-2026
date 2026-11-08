@@ -20,14 +20,15 @@ OBXXE5DPNVRXAMRQGI3HG5DFOB2XA43FMVSA
 
 The seed changed from the jPrime realm, so an existing jPrime entry on the phone will produce wrong codes. Check the phone clock is synced; TOTP fails on drift.
 
-The step-up demo first surfaces as a 401 + `WWW-Authenticate: Bearer error="insufficient_user_authentication"` response from `conference-api` and a `ToolCallException("insufficient_user_authentication: ...")` from `conference-mcp`. Show that response on the second screen, then re-authenticate through the OTP prompt and retry.
+What the audience sees in Demo 3: `conference-mcp` checks the `acr` on your token **before** it calls the API, so the refusal is a tool error, `insufficient_user_authentication: this tool requires step-up MFA`, visible in the `conference-mcp` terminal. The chat recognises that error code, shows the amber step-up card and opens the OTP popup. The API's own 401 + `WWW-Authenticate` challenge is a second line of defence and does not appear in this flow, so don't promise it on stage. MCP Inspector and Claude show the tool error but will not re-prompt for MFA by themselves.
 
 ## Env vars
 
 | Variable | Purpose | Demo default |
 |----------|---------|--------------|
 | `DEMO_NOW` | Override the "current time" used by `whats_on_now`, `whats_next`, and the rating cutoff. | `2026-11-10T11:40:00+00:00` |
-| `ANTHROPIC_API_KEY` | The LLM behind `conference-chat`. Without it the chat cannot plan a single tool call. | required in Terminal 3 |
+| `ANTHROPIC_API_KEY` | The LLM behind `conference-chat`. Without it the chat falls back to the scripted planner. | required in Terminal 3 |
+| `DEMO_PLANNER` | `llm` asks the model and falls back to scripted prompts if it fails or takes over 15s. `scripted` never calls the model: use it when the wifi is gone. | `llm` |
 
 `OIDC_AUTH_SERVER_URL`, `CONFERENCE_API_URL`, `CONFERENCE_MCP_URL`, and database credentials are only needed in `%prod`. In dev mode Quarkus Dev Services wires everything automatically.
 
@@ -52,15 +53,15 @@ Open `http://localhost:8080/audit-live/` on the second monitor.
 ## Pre-flight check (before going on stage)
 
 1. `curl http://localhost:8080/api/v1/sessions | jq '.[0]'` returns a real session.
-2. The audit dashboard shows "Waiting for the first event..." (clean state) or a recent rehearsal event.
+2. The audit dashboard shows the five seeded attendee events (alice, bob, carol, dave, erin) and nothing from `willem.jan`. Any `willem.jan` row is rehearsal data: reset Postgres (see Recovery).
 3. Open the Dev UI at `http://localhost:8080/q/dev/` and click the **Keycloak** tile. Confirm realm `porto` is imported with `attendee`, `willem.jan`, and `admin-demo`.
 4. From the Dev UI Keycloak tile, copy the realm URL. Paste `http://<dev-keycloak-url>/.well-known/openid-configuration` into a browser tab and confirm 200.
 5. Hit `http://localhost:8082/` in a browser; log in as `attendee / attendee`. The Qute shell renders with the quick prompts. Click *"What's happening right now?"* once: a real answer proves the API key and the MCP connection.
 6. Start the apps (and so Keycloak) at least 15 minutes before the slot; the first container start is the slow one.
-7. Venue wifi: tether to a phone hotspot for the LLM and the Inspector `npx` download.
-8. Do one full dry run after a clean Postgres restart (see Recovery) so the seeds and the cancel toggle are reset. Then restart once more: the dry run leaves your bookmarks, rating and cancellation behind.
+7. Venue wifi: tether to a phone hotspot for the LLM. Install Inspector beforehand (`npm install -g @modelcontextprotocol/inspector`) so it doesn't need an `npx` download on stage.
+8. Do one full dry run after a clean Postgres restart (see Recovery) so the seeds and the cancellation are reset. Then restart once more: the dry run leaves your bookmarks, rating and cancellation behind.
 9. Notifications off, sleep off, backup videos queued.
-10. LLM fallback: every tool also runs from MCP Inspector, which needs no LLM.
+10. LLM fallback: if the model fails, the chat answers the sidebar and runbook prompts from a scripted planner and says so in the reply ("Scripted fallback (LLM unavailable)"). With no network at all, restart `conference-chat` with `DEMO_PLANNER=scripted` so nothing waits on a timeout. Every tool also runs from MCP Inspector.
 
 ## Time budget (50 minutes)
 
@@ -83,14 +84,14 @@ Point MCP Inspector at the streamable HTTP endpoint `http://localhost:8081/mcp` 
 
 The whole `/mcp` endpoint requires the `attendee` scope, so the first unauthenticated request returns a `401` whose `WWW-Authenticate` header carries the `resource_metadata` pointer. That is the spec-compliant signal that starts the discovery above. A token that authenticates but lacks the `attendee` scope returns a `403` with `error="insufficient_scope", scope="attendee"`, emitted by the `quarkus-mcp-server-oidc` extension. Both challenges name the resource metadata URL so the client knows where to go next.
 
-The `porto` realm is deliberately configured for **open anonymous DCR** so Inspector can register with no pre-shared credentials. Keycloak ships four anonymous client-registration policies that each block or cripple a DCR client; all four have been cleared in `keycloak-realm.json`:
+The `porto` realm is deliberately configured for **open anonymous DCR** so Inspector can register with no pre-shared credentials. Keycloak ships four anonymous client-registration policies that each block or cripple a DCR client. Three are cleared in `keycloak-realm.json`; Consent Required stays on deliberately:
 
 | Removed/changed policy | Why it had to go |
 |------------------------|------------------|
 | Allowed Client Scopes | Rejected the `openid` scope Inspector always requests. |
 | Trusted Hosts | Rejected Inspector's hardcoded `github.com` `client_uri`, and the Docker gateway sender IP. |
 | Full Scope Disabled | Set `fullScopeAllowed=false`, stripping realm roles from the token (caused 403 on tool calls). |
-| Consent Required | Forced a consent prompt on every freshly registered client. |
+| Consent Required (kept) | Every freshly registered client gets a consent screen. An anonymous client nobody vetted must not get a token silently: that is the confused-deputy risk the MCP spec warns about. On stage, click **Yes** and point out that this prompt is a feature. |
 
 On top of that, the `basic` client scope carries `realm-roles` and `preferred_username` mappers. DCR clients only retain the `basic` scope, so without these the token would be claimless: no roles (tool authorization fails) and no username (audit events attributed to the `sub` UUID).
 
@@ -122,7 +123,7 @@ Keycloak runs inside a Dev Services container and must fetch the metadata docume
 
 ### Enable CIMD on Keycloak
 
-CIMD is an experimental Keycloak feature (verified present in the Dev Services image, Keycloak 26.6.1), off by default. It is switched on through Dev Services with:
+CIMD is an experimental Keycloak feature (verified present in the Dev Services image, Keycloak 26.7.4, pinned in all three `application.properties`), off by default. It is switched on through Dev Services with:
 
 ```
 quarkus.keycloak.devservices.features=cimd
@@ -146,27 +147,31 @@ If the Inspector build on hand does not yet emit a URL `client_id`, drive the co
 
 ```bash
 KC=$(curl -s http://localhost:8081/.well-known/oauth-protected-resource | jq -r '.authorization_servers[0]')
+VERIFIER=$(openssl rand -base64 48 | tr -d '=+/\n' | cut -c1-64)
+CHALLENGE=$(printf %s "$VERIFIER" | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d '=')
 open "$KC/protocol/openid-connect/auth?response_type=code\
 &client_id=http://host.docker.internal:8081/cimd/mcp-inspector.json\
 &redirect_uri=http://localhost:6274/oauth/callback\
-&scope=openid&code_challenge=E9Me...&code_challenge_method=S256"
+&scope=openid%20attendee&code_challenge=$CHALLENGE&code_challenge_method=S256"
 ```
+
+`attendee` is required: without it the token has no `aud=conference-mcp` and `/mcp` rejects it. Nothing listens on port 6274 unless Inspector is running, so the browser ends on an error page after login; the point is the Keycloak log line, not the callback.
 
 Watch the Keycloak log: it fetches the metadata document before rendering the login page.
 
 ### DCR vs CIMD, the punchline
 
-The DCR section above had to clear four anonymous client-registration policies just to let Inspector register. None of them apply under CIMD, because nothing is being written:
+The DCR section above had to clear three anonymous client-registration policies just to let Inspector register, and keeps a consent prompt to make up for trusting an unknown client. None of them apply under CIMD, because nothing is being written:
 
 | Concern under DCR | Under CIMD |
 |-------------------|------------|
 | Allowed Client Scopes policy rejected the `openid` scope | No registration step, scope is requested at authorization time as normal |
 | Trusted Hosts policy rejected the `client_uri` and the sender IP | No registration call to police, the client identity is a document the server reads |
 | Full Scope Disabled stripped realm roles from the token | No DCR-specific stripping, the realm role and username mappers apply as usual |
-| Consent Required forced a prompt on each freshly registered client | No per-registration client object to attach consent to |
+| Consent Required is the only guard against an unvetted client getting a token silently | The client identity is a URL the server fetches and whose redirect URIs it checks |
 | The open anonymous registration endpoint is a standing write surface | There is no writeable registration endpoint at all |
 
-Talking point: **DCR makes the authorization server keep a writeable door open, then asks you to bolt four locks onto it. CIMD removes the door. The client introduces itself with a URL the server reads, nothing is stored, and there is no registration surface to attack.**
+Talking point: **DCR makes the authorization server keep a writeable door open, then asks you to pick which locks to remove and which to keep. CIMD removes the door. The client introduces itself with a URL the server reads, nothing is stored, and there is no registration surface to attack.**
 
 ## Demo 1: Public schedule lookup (~8 min)
 
@@ -180,15 +185,15 @@ Talking point: **DCR makes the authorization server keep a writeable door open, 
    ```
    Point at it on the terminal (it survives the redirect, unlike the URL bar). Then show the access token decoded in the inspector.
 
-6. **Registration contrast.** Show how the Inspector got its client identity two ways. First DCR: the four policies you had to clear so Keycloak would accept a dynamically registered client (see the DCR section above). Then CIMD: the same Inspector identified by a URL `client_id`, with Keycloak fetching the metadata document and zero policy surgery (see the CIMD section above). Land the punchline: DCR keeps a writeable registration door open and asks you to lock it down, CIMD removes the door.
+6. **Registration contrast.** Show how the Inspector got its client identity two ways. First DCR: the three policies you had to clear so Keycloak would accept a dynamically registered client, and the consent screen that stays (see the DCR section above). Then CIMD: the same Inspector identified by a URL `client_id`, with Keycloak fetching the metadata document and zero policy surgery (see the CIMD section above). Land the punchline: DCR keeps a writeable registration door open and asks you to lock it down, CIMD removes the door.
 
-Talking points: **PKCE, CIMD as the default, DCR as the deprecated legacy path (deprecated in the 2026-07-28 spec), why client identity matters for AI clients.**
+Talking points: **PKCE, CIMD as the recommended path, DCR as the deprecated legacy path (deprecated in the 2026-07-28 spec), why client identity matters for AI clients.**
 
-The audit dashboard shows nothing yet (read-only tools do not audit). Tell the audience: "Read tools do not show up. That is on purpose. The audit log records intent, not curiosity."
+The audit dashboard shows nothing new (read-only tools do not audit). Tell the audience: "Read tools do not show up. That is on purpose. The audit log records intent, not curiosity."
 
 ## Demo 2: Personal agenda with token exchange (~10 min)
 
-1. Log out of the attendee session and log in as **willem.jan / willem.jan**. Demo 2 and 3 both run as you, and the audit punchline names you. The agenda starts empty.
+1. Click **Sign out** in the chat's top bar (it ends the Keycloak session too), then log in as **willem.jan / willem.jan**. Demo 2 and 3 both run as you, and the audit punchline names you. The agenda starts empty.
 2. Ask: *"Bookmark the GraalVM talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
 3. Ask: *"Show me my agenda."* (calls `my_agenda`).
 4. Ask: *"Also add the Practical MCP Security talk."* Then *"Do I have any conflicts?"* (calls `my_conflicts`; both run 11:10 to 12:00).
@@ -209,12 +214,13 @@ The audit dashboard shows nothing yet (read-only tools do not audit). Tell the a
 ## Demo 3: Step-up auth (~8 min)
 
 1. Stay logged in as **willem.jan**, no MFA (acr=1).
-2. Ask: *"Show me the feedback on my MCP talk."* (calls `my_session_feedback`) returns seeded ratings.
+2. Ask: *"Show me the feedback on my MCP talk."* (calls `my_session_feedback`) returns seeded ratings, anonymous: names are personal data and sit behind step-up.
 3. Ask: *"Who signed up to attend my MCP Security talk?"* (calls `view_session_attendees`).
-4. Server returns `insufficient_user_authentication`. Show the 401 + `WWW-Authenticate` response on the second screen (the chat surfaces the same as an amber step-up card). Talk through what a real client would do next: re-auth with `acr_values=urn:porto:mfa`, retry the tool call.
+4. `conference-mcp` refuses with the tool error `insufficient_user_authentication` before it calls the API. The chat shows it as an amber step-up card; point at the same line in the `conference-mcp` terminal. Talk through what the client does next: re-auth with `acr_values=urn:porto:mfa`, retry the tool call.
 5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:porto:mfa`.
 6. Ask: *"Cancel my MCP Security talk, reason is I want to go home early."* (calls `cancel_my_session`). A red `CANCEL_SESSION` event lands with the strong acr.
-7. Undo it straight away: *"Undo the cancellation of my MCP Security talk, reason: back on track."* The same tool toggles back and records `CANCEL_SESSION_UNDONE`. Undo before Q&A: a cancelled talk drops out of `whats_on_now`.
+7. Undo it straight away: *"Undo the cancellation of my MCP Security talk, reason: back on track."* The same tool with `undo=true` restores it and records `CANCEL_SESSION_UNDONE`. It is explicit, not a toggle: a retried cancel fails with 409 instead of silently undoing itself. Undo before Q&A: a cancelled talk drops out of `whats_on_now`.
+8. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens issued to `conference-mcp`, because the token exchange drops it. That is a demo shortcut; the proper fix is delegation with an `act` claim.
 
 Talking points: **step-up is server-driven: the tool decides it needs more proof. Honest caveat: MCP itself only standardises scope step-up (403 `insufficient_scope`); assurance step-up with `acr` (RFC 9470) is a contract between this server and this client.**
 
@@ -223,14 +229,14 @@ Talking points: **step-up is server-driven: the tool decides it needs more proof
 | Symptom | Fix |
 |---------|-----|
 | Inspector: `-32099 ... Error POSTing to endpoint (HTTP 404)` | Stale MCP session after a `conference-mcp` reload. Disconnect then Connect in Inspector to get a fresh session. |
-| Inspector DCR fails (rejected policy, 403 on tools, or claimless token) | The running Keycloak is using a stale realm. Recycle it so the realm re-imports (see "Reload the realm" below). |
+| Inspector DCR fails (rejected policy, 403 on tools, claimless token, or no consent screen) | The running Keycloak is using a stale realm. Recycle it so the realm re-imports (see "Reload the realm" below). |
 | `/mcp` returns `403 insufficient_scope` | The token authenticates but its realm roles do not include `attendee`. Log in as `attendee`, `willem.jan`, or `admin-demo`; all three carry it. |
 | CIMD: Keycloak does not fetch the metadata document, or `invalid_client` | The `cimd` feature is not active on the running container, or the container predates the `features=cimd` setting. Recycle Keycloak (see "Reload the realm"), then check the startup log for `features enabled: cimd`. |
 | CIMD: Keycloak cannot reach the metadata URL | `host.docker.internal` is not resolvable. Add `127.0.0.1 host.docker.internal` to `/etc/hosts` and confirm `curl http://host.docker.internal:8081/cimd/mcp-inspector.json` returns the document. |
 | `whats_on_now` returns nothing | Confirm `DEMO_NOW` env var is set, then `q` and restart `conference-api`. |
 | Audit dashboard frozen | Hard refresh the browser tab; the poll is every 2 seconds. |
 | Audit log shows stale rehearsal data | `docker rm -f` the Dev Services Postgres container and restart `conference-api`. Hibernate `drop-and-create` plus the seeders give you a clean slate. |
-| Step-up flow does not prompt for TOTP | The running Keycloak predates the realm's `Browser Stepup` flow. Recycle Keycloak so the realm re-imports (see "Reload the realm"). As a fallback, show the 401 + `WWW-Authenticate` response and explain what a compliant client does next. |
+| Step-up flow does not prompt for TOTP | The running Keycloak predates the realm's `Browser Stepup` flow. Recycle Keycloak so the realm re-imports (see "Reload the realm"). As a fallback, show the `insufficient_user_authentication` tool error and explain what a compliant client does next. |
 | `/mcp` returns `401` with a valid login | The token lacks `aud=conference-mcp`. The audience comes from the `attendee` client scope: `conference-chat` has it as a default scope, DCR/CIMD clients must request `scope=attendee` (it is a realm-level optional scope). |
 
 ### Reload the realm

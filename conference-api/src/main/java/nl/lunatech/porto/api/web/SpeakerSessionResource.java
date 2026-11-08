@@ -11,11 +11,13 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.MediaType;
 import nl.lunatech.porto.api.audit.AuditService;
 import nl.lunatech.porto.api.domain.Attendee;
 import nl.lunatech.porto.api.domain.Bookmark;
 import nl.lunatech.porto.api.domain.Session;
+import nl.lunatech.porto.api.dto.ApiError;
 import nl.lunatech.porto.api.dto.AttendeeBookmarkDto;
 import nl.lunatech.porto.api.dto.CancelSessionRequest;
 import nl.lunatech.porto.api.dto.SessionDto;
@@ -44,7 +46,7 @@ public class SpeakerSessionResource {
     @Transactional
     public List<AttendeeBookmarkDto> attendees(@PathParam("id") Long id) {
         stepUp.require();
-        Session session = requireOwnedSession(id);
+        Session session = requireOwnedSession(id, "VIEW_SESSION_ATTENDEES_DENIED");
         List<AttendeeBookmarkDto> list = Bookmark.<Bookmark>list("session.id = ?1 order by createdAt asc", session.id)
                 .stream()
                 .map(AttendeeBookmarkDto::of)
@@ -61,24 +63,32 @@ public class SpeakerSessionResource {
         if (req == null || req.reason() == null || req.reason().isBlank()) {
             throw new WebApplicationException("reason is required", 400);
         }
-        Session session = requireOwnedSession(id);
-        boolean wasCancelled = session.cancelled;
-        session.cancelled = !wasCancelled;
-        session.cancellationReason = wasCancelled ? null : req.reason();
+        Session session = requireOwnedSession(id, "CANCEL_SESSION_ATTEMPTED");
+        // Explicit direction instead of a toggle: a retried call must not silently undo the last one.
+        boolean undo = req.undo();
+        if (session.cancelled != undo) {
+            throw new WebApplicationException(Response.status(Response.Status.CONFLICT)
+                    .entity(ApiError.of("conflict", undo
+                            ? "session " + id + " is not cancelled"
+                            : "session " + id + " is already cancelled"))
+                    .build());
+        }
+        session.cancelled = !undo;
+        session.cancellationReason = undo ? null : req.reason();
         session.persist();
         audit.record(
-                wasCancelled ? "CANCEL_SESSION_UNDONE" : "CANCEL_SESSION",
+                undo ? "CANCEL_SESSION_UNDONE" : "CANCEL_SESSION",
                 "session:" + id,
                 "reason=" + req.reason());
         return SessionDto.of(session);
     }
 
-    private Session requireOwnedSession(Long id) {
+    private Session requireOwnedSession(Long id, String deniedAction) {
         Session s = Session.findById(id);
         if (s == null) throw new NotFoundException("session " + id);
         Attendee me = attendees.currentAttendee();
         if (me.speaker == null || s.speaker == null || !s.speaker.id.equals(me.speaker.id)) {
-            audit.record("CANCEL_SESSION_ATTEMPTED", "session:" + id, "not a speaker on session");
+            audit.recordDenied(deniedAction, "session:" + id, "not a speaker on session");
             throw new ForbiddenException("you are not a speaker on this session");
         }
         return s;

@@ -4,8 +4,8 @@ Backing data API for the Porto Tech Hub 2026 MCP demo. Exposes the schedule, att
 agendas, ratings, and an open audit feed under `/api/v1/`, and serves the
 second-screen audit dashboard at `/audit-live/`.
 
-Part of a three-app monorepo. See `../SPEC.md` for the demo's source of truth
-and `../AGENTS.md` plus `AGENTS.md` for working conventions.
+Part of a three-app monorepo. See `../README.md` for the architecture and
+`../DESIGN.md` for the security decisions.
 
 ## Stack
 

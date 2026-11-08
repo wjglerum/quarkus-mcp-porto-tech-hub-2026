@@ -77,10 +77,16 @@ class StepUpTest {
         given().auth().oauth2(token("attendee-only", Set.of("attendee"), MFA_ACR))
                 .when().get("/api/v1/sessions/" + id + "/attendees")
                 .then().statusCode(403);
+
+        // The refusal is audited even though the request's own transaction rolls back.
+        given().queryParam("limit", 30)
+                .when().get("/api/v1/audit/recent")
+                .then().statusCode(200)
+                .body("action", hasItem("VIEW_SESSION_ATTENDEES_DENIED"));
     }
 
     @Test
-    void cancelSessionIsReversibleAndAuditsBothDirections() {
+    void cancelSessionIsExplicitlyReversibleAndAuditsBothDirections() {
         int id = wjgSessionId();
         String token = token("willem.jan", Set.of("attendee", "speaker"), MFA_ACR);
         given().auth().oauth2(token)
@@ -91,10 +97,20 @@ class StepUpTest {
                 .body("cancelled", equalTo(true));
         given().auth().oauth2(token)
                 .contentType("application/json")
-                .body("{\"reason\":\"changed mind\"}")
+                .body("{\"reason\":\"retried call\"}")
+                .when().post("/api/v1/sessions/" + id + "/cancel")
+                .then().statusCode(409);
+        given().auth().oauth2(token)
+                .contentType("application/json")
+                .body("{\"reason\":\"changed mind\",\"undo\":true}")
                 .when().post("/api/v1/sessions/" + id + "/cancel")
                 .then().statusCode(200)
                 .body("cancelled", equalTo(false));
+        given().auth().oauth2(token)
+                .contentType("application/json")
+                .body("{\"reason\":\"undo twice\",\"undo\":true}")
+                .when().post("/api/v1/sessions/" + id + "/cancel")
+                .then().statusCode(409);
 
         given().queryParam("limit", 30)
                 .when().get("/api/v1/audit/recent")

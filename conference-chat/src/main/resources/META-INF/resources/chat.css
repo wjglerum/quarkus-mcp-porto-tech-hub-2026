@@ -56,6 +56,8 @@ body::before {
 .brand-sub { color: var(--fg-muted); }
 .status { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 13px; color: var(--fg-muted); }
 .who { color: var(--amber); }
+.logout { color: var(--fg-muted); text-decoration: none; border: 1px solid currentColor; border-radius: 4px; padding: 2px 8px; }
+.logout:hover { color: var(--fg, #fff); }
 
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-dim); }
 .dot.live {

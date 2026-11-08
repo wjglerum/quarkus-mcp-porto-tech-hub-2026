@@ -14,5 +14,5 @@
     "code"
   ],
   "token_endpoint_auth_method": "none",
-  "scope": "openid"
+  "scope": "openid attendee"
 }

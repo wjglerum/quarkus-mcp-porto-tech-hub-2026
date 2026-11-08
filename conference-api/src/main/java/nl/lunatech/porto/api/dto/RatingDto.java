@@ -23,4 +23,9 @@ public record RatingDto(
                 r.comment,
                 r.createdAt);
     }
+
+    /** The same rating without the attendee's name: what a speaker sees in their feedback. */
+    public static RatingDto anonymous(Rating r) {
+        return new RatingDto(r.id, r.session.id, r.session.title, null, r.stars, r.comment, r.createdAt);
+    }
 }

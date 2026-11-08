@@ -18,7 +18,7 @@ public record SessionFeedbackDto(
         double avg = ratings.stream().mapToInt(r -> r.stars).average().orElse(0.0);
         Map<Integer, Long> dist = ratings.stream()
                 .collect(Collectors.groupingBy(r -> r.stars, Collectors.counting()));
-        List<RatingDto> dtos = ratings.stream().map(RatingDto::of).toList();
+        List<RatingDto> dtos = ratings.stream().map(RatingDto::anonymous).toList();
         return new SessionFeedbackDto(SessionDto.of(session), ratings.size(), avg, dist, dtos);
     }
 }

@@ -44,17 +44,22 @@ public class StepUpTools {
 
     @Tool(name = "cancel_my_session",
             description = "Mark one of the speaker's own sessions as cancelled, with a recorded "
-                    + "reason. Reversible: calling again toggles it off and records "
-                    + "`CANCEL_SESSION_UNDONE`. Destructive, so it requires MFA-backed step-up. Pass "
-                    + "session_query when you lack the id. Tell the user it is audited and visible on "
-                    + "the live audit feed.")
+                    + "reason. Set undo=true to restore a cancelled session instead; that records "
+                    + "`CANCEL_SESSION_UNDONE`. Cancelling an already cancelled session, or restoring "
+                    + "one that is not cancelled, fails rather than flipping it. Destructive, so it "
+                    + "requires MFA-backed step-up. Pass session_query when you lack the id. Tell the "
+                    + "user it is audited and visible on the live audit feed.")
     public SessionDto cancelMySession(
             @ToolArg(name = "session_id", description = SessionResolver.SESSION_ID, required = false) Long sessionId,
             @ToolArg(name = "session_query", description = SessionResolver.SESSION_QUERY, required = false) String sessionQuery,
             @ToolArg(name = "reason",
                     description = "Free-text reason recorded in the audit log.",
-                    required = true) String reason) {
+                    required = true) String reason,
+            @ToolArg(name = "undo",
+                    description = "true to restore a cancelled session; omit or false to cancel it.",
+                    required = false) Boolean undo) {
         stepUp.require();
-        return me.cancelSession(sessions.resolve(sessionId, sessionQuery), new CancelSessionRequest(reason));
+        return me.cancelSession(sessions.resolve(sessionId, sessionQuery),
+                new CancelSessionRequest(reason, Boolean.TRUE.equals(undo)));
     }
 }

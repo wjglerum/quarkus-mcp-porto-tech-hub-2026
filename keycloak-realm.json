@@ -1622,6 +1622,13 @@
       "subComponents" : { },
       "config" : { }
     }, {
+      "id" : "a8670dd1-1ea2-483a-a0a2-67ad6ed56e79",
+      "name" : "Consent Required",
+      "providerId" : "consent-required",
+      "subType" : "anonymous",
+      "subComponents" : { },
+      "config" : { }
+    }, {
       "id" : "f58862a7-a5fe-4d42-a616-d02dee96e112",
       "name" : "Max Clients Limit",
       "providerId" : "max-clients",

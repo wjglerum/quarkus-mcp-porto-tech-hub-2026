@@ -13,9 +13,8 @@
 | `conference-mcp/`   | Quarkus MCP server (streamable HTTP). Exposes tools to AI clients and exchanges the user OAuth token (RFC 8693) for a `conference-api` token on every call. |
 | `conference-chat/`  | Quarkus chat client. OIDC web-app login, LangChain4j MCP client to `conference-mcp`, Qute-rendered shell. |
 | `keycloak-realm.json` | Single shared realm export at the monorepo root. All three apps reference it via `../keycloak-realm.json`. |
-| `SPEC.md`           | Original build spec for the demo (canonical reference). |
+| `DESIGN.md`         | Security decisions, trust boundaries and the deliberate demo shortcuts. |
 | `RUNBOOK.md`        | Stage-side runbook with the three-demo flow and the env vars to set. |
-| `docs/slides/`      | The talk deck as a self-contained HTML page. |
 
 No Docker compose file: every backing service is auto-provisioned by **Quarkus Dev Services**.
 
@@ -78,7 +77,7 @@ sequenceDiagram
 
 ## MCP protocol version
 
-`conference-mcp` runs on [Quarkus MCP Server](https://docs.quarkiverse.io/quarkus-mcp-server/dev/) 2.0.4 (Quarkus 3.40.1), which implements the latest MCP spec, **2026-07-28**. The headline change in that spec is the **stateless** mode: a client skips the `initialize`/`initialized` handshake, can call `server/discover` to learn the supported versions and capabilities, and sends every request self-contained (`MCP-Protocol-Version` and `Mcp-Method` headers plus `_meta` client info). No `Mcp-Session-Id` is issued, so there is no session to go stale after a reload (MCP Inspector and the chat client still run in session mode).
+`conference-mcp` runs on [Quarkus MCP Server](https://docs.quarkiverse.io/quarkus-mcp-server/dev/) 2.0.4 (Quarkus 3.40.1), which implements the latest MCP spec, **2026-07-28**. The headline change in that spec is the **stateless** mode: a client skips the `initialize`/`initialized` handshake, can call `server/discover` to learn the supported versions and capabilities, and sends every request self-contained (`Mcp-Method` and `Mcp-Name` headers plus `_meta` client info). No `Mcp-Session-Id` is issued, so there is no session to go stale after a reload (MCP Inspector and the chat client still run in session mode).
 
 The same `/mcp` endpoint still serves session-based clients on 2025-11-25 and earlier (MCP Inspector, the LangChain4j client in `conference-chat`). Authorization is unchanged across both modes: every request, stateless or not, carries the Bearer token and passes the same gate. `McpProtocolVersionTest` pins this behaviour.
 
@@ -103,23 +102,23 @@ Keycloak's standard token exchange keeps the user, the roles and the session, bu
 - It sends what it verified as `X-Mcp-Acr` and the client the user signed in with as `X-Mcp-Client`.
 - `conference-api` trusts those headers **only** on a token issued to `conference-mcp` (`azp`). Only that client holds the secret to obtain one. For any other caller, the token's own `acr` is all that counts.
 
-Keycloak 26.7 adds token exchange *delegation* with an `act` claim, as an experimental feature. Until that is stable, `azp` plus the asserted client header is how the audit log names both the user and the agent.
+Keycloak 26.7 added token exchange *delegation* with an `act` claim as an experimental feature, and 26.8 moved it to preview. The demo stays on 26.7.4, the version it was rehearsed on. Until delegation is stable, `azp` plus the asserted client header is how the audit log names both the user and the agent.
 
 ## Client registration: DCR vs CIMD
 
-An AI client has to obtain an OAuth client identity before it can run PKCE. The demo shows both mechanisms against the same realm: CIMD, the default, and DCR, which the 2026-07-28 spec deprecates and keeps only for backwards compatibility.
+An AI client has to obtain an OAuth client identity before it can run PKCE. The demo shows both mechanisms against the same realm: CIMD, the recommended path, and DCR, which the 2026-07-28 spec deprecates and keeps only for backwards compatibility.
 
-**Dynamic Client Registration (DCR)** has the client POST to a writeable registration endpoint and get back a generated `client_id`. To make this work for MCP Inspector, the realm clears four anonymous registration policies (documented in [`RUNBOOK.md`](RUNBOOK.md)). The talking point: "the AI got a token" is not "the AI got a useful token", every scope, role, and claim has to be consciously engineered back in.
+**Dynamic Client Registration (DCR)** has the client POST to a writeable registration endpoint and get back a generated `client_id`. To make this work for MCP Inspector, the realm clears three anonymous registration policies and keeps the consent prompt (documented in [`RUNBOOK.md`](RUNBOOK.md)). The talking point: "the AI got a token" is not "the AI got a useful token", every scope, role, and claim has to be consciously engineered back in.
 
-**Client ID Metadata Documents (CIMD)**, the spec-preferred default since the MCP 2025-11-25 spec (SEP-991), drop the registration step entirely. The `client_id` is an HTTPS URL, and Keycloak fetches the client metadata document at that URL. The demo serves one at `conference-mcp/.../META-INF/resources/cimd/mcp-inspector.json`, enabled through Keycloak's experimental `cimd` feature (`quarkus.keycloak.devservices.features=cimd`).
+**Client ID Metadata Documents (CIMD)**, recommended since the MCP 2025-11-25 spec (SEP-991), drop the registration step entirely. The `client_id` is an HTTPS URL, and Keycloak fetches the client metadata document at that URL. The demo serves one at `conference-mcp/.../META-INF/resources/cimd/mcp-inspector.json`, enabled through Keycloak's experimental `cimd` feature (`quarkus.keycloak.devservices.features=cimd`).
 
 | | DCR | CIMD |
 |--|-----|------|
 | Client identity | Generated `client_id` from a registration call | An HTTPS URL that is the `client_id` |
 | Server state | A stored registration record per client | None, the document is fetched on demand |
 | Registration endpoint | Writeable, must be opened and policed | None |
-| Realm setup for this demo | Four anonymous policies cleared | One experimental feature flag enabled |
-| Spec status | Deprecated in 2026-07-28, kept for compatibility | Preferred default since 2025-11-25 |
+| Realm setup for this demo | Three anonymous policies cleared, consent kept | One experimental feature flag enabled |
+| Spec status | Deprecated in 2026-07-28, kept for compatibility | Recommended since 2025-11-25 |
 
 ## Run
 
@@ -130,14 +129,17 @@ cd conference-api && ./mvnw quarkus:dev
 # Terminal 2 - conference-mcp on :8081
 cd conference-mcp && ./mvnw quarkus:dev
 
-# Terminal 3 - conference-chat on :8082
+# Terminal 3 - conference-chat on :8082 (needs an Anthropic API key for the LLM)
+export ANTHROPIC_API_KEY=...
 cd conference-chat && ./mvnw quarkus:dev
 ```
 
+Without a key, or without network, the chat falls back to a scripted planner that only understands the demo prompts in its sidebar; set `DEMO_PLANNER=scripted` to skip the model entirely. The MCP calls, tokens and audit trail are the same either way.
+
 On first start Dev Services boots:
 
-- a **Postgres 16** container for `conference-api` (schema owned by Hibernate via `drop-and-create`, auto-seeded with the schedule and demo data)
-- a **Keycloak 26** container with the `porto` realm pre-imported, shared between all three apps via `service-name=porto-keycloak`
+- a **Postgres 18** container for `conference-api` (schema owned by Hibernate via `drop-and-create`, auto-seeded with the schedule and demo data)
+- a **Keycloak 26.7.4** container (pinned in `application.properties`) with the `porto` realm pre-imported, shared between all three apps via `service-name=porto-keycloak`
 
 The realm export lives once at the monorepo root (`./keycloak-realm.json`). All three apps reference it via `quarkus.keycloak.devservices.realm-path=../keycloak-realm.json`.
 

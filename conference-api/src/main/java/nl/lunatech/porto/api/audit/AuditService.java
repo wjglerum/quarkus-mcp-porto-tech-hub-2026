@@ -25,8 +25,22 @@ public class AuditService {
     @Inject
     StepUp stepUp;
 
+    /** Records an action as part of the caller's transaction: it is only kept if the action commits. */
     @Transactional
     public void record(String action, String target, String detail) {
+        persist(action, target, detail);
+    }
+
+    /**
+     * Records a refused attempt in its own transaction. The exception that follows rolls back the
+     * caller's transaction, and the audit row must survive that.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public void recordDenied(String action, String target, String detail) {
+        persist(action, target, detail);
+    }
+
+    private void persist(String action, String target, String detail) {
         AuditEvent event = new AuditEvent();
         event.attendeeSubject = resolveSubject();
         event.action = action;

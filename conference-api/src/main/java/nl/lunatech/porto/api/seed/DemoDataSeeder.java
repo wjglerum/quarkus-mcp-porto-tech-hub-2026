@@ -40,7 +40,7 @@ public class DemoDataSeeder {
             "Loved the live demo.",
             "Wish the slides had more code.",
             "Best session of the day so far.",
-            "Great use of caffeine.",
+            "Clear demos, I could follow every step.",
             "A bit fast for a beginner audience but solid material.",
             "Made a complex topic feel simple."
     );
@@ -183,7 +183,7 @@ public class DemoDataSeeder {
         Object[][] trail = {
                 {"attendee-alice", "BOOKMARK_ADD", "session:" + talk.id, "1", "pwd", aiClient, "Practical MCP Security in Action"},
                 {"attendee-bob", "BOOKMARK_ADD", "session:" + talk.id, "1", "pwd", aiClient, "Practical MCP Security in Action"},
-                {"attendee-carol", "RATE_SESSION", "session:" + talk.id, "1", "pwd", aiClient, "stars=5 comment=great use of caffeine"},
+                {"attendee-carol", "RATE_SESSION", "session:" + talk.id, "1", "pwd", aiClient, "stars=5 comment=finally understood token exchange"},
                 {"attendee-dave", "RATE_SESSION_REJECTED_NOT_STARTED", "session:" + laterSid, "1", "pwd", aiClient, "stars=4"},
                 {"attendee-erin", "BOOKMARK_REMOVE", "session:" + talk.id, "1", "pwd", aiClient, null},
         };
