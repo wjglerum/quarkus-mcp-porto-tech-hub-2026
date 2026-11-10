@@ -98,13 +98,13 @@ The MCP authorization spec forbids token passthrough: an MCP server must not for
 
 `conference-mcp` never forwards the user's token. `quarkus-rest-client-oidc-token-propagation` with `exchange-token=true` performs an RFC 8693 token exchange at Keycloak before every `conference-api` call. Keycloak allows it only because `conference-mcp` is a confidential client with standard token exchange enabled and the `conference-api` audience in its default client scopes. Any other requested audience is refused. `conference-api` validates `aud=conference-api` in every profile, so a user token sent straight to the API is rejected with a 401.
 
-Keycloak's standard token exchange keeps the user, the roles and the session, but **not the step-up level**: an `acr` of `urn:porto:mfa` comes back as `1` (verified against Keycloak 26.7.4; `scope`, `acr_values` and `claims` on the exchange request do not change it). So the hop that saw the original token enforces and asserts it:
+Keycloak's standard token exchange keeps the user, the roles and the session, but **not the step-up level**: an `acr` of `urn:porto:mfa` comes back as `1` (verified against Keycloak 26.7.4 and 26.8.2; `scope`, `acr_values` and `claims` on the exchange request do not change it). So the hop that saw the original token enforces and asserts it:
 
 - `conference-mcp` checks the `acr` on the user's token before any step-up tool runs, as before.
 - It sends what it verified as `X-Mcp-Acr` and the client the user signed in with as `X-Mcp-Client`.
 - `conference-api` trusts those headers **only** on a token issued to `conference-mcp` (`azp`). Only that client holds the secret to obtain one. For any other caller, the token's own `acr` is all that counts.
 
-Keycloak 26.7 added token exchange *delegation* with an `act` claim as an experimental feature, and 26.8 moved it to preview. The demo stays on 26.7.4, the version it was rehearsed on. Until delegation is stable, `azp` plus the asserted client header is how the audit log names both the user and the agent.
+Keycloak 26.8 promoted token exchange *delegation* to preview: the user consents to `delegation:client:conference-mcp` at login, the user token carries a `may_act` claim, and `conference-mcp` exchanges it together with its own service-account token for one with an `act` claim naming `conference-mcp`. Tested against 26.8.2, that delegated token still comes back with `acr=1` and does not say which client the user signed in with (`azp` and `act.client_id` are both `conference-mcp`). So delegation would replace the `azp` check, not the two headers, and it costs a consent screen on every login, two preview features and a custom Quarkus filter (the OIDC client cannot send an `actor_token` yet). The demo stays on standard token exchange: `azp` plus the asserted client header is how the audit log names both the user and the agent.
 
 ## Client registration: DCR vs CIMD
 
@@ -141,7 +141,7 @@ Without a key, or without network, the chat falls back to a scripted planner tha
 On first start Dev Services boots:
 
 - a **Postgres 18** container for `conference-api` (schema owned by Hibernate via `drop-and-create`, auto-seeded with the schedule and demo data)
-- a **Keycloak 26.7.4** container (pinned in `application.properties`) with the `porto` realm pre-imported, shared between all three apps via `service-name=porto-keycloak`
+- a **Keycloak 26.8.2** container (pinned in `application.properties`) with the `porto` realm pre-imported, shared between all three apps via `service-name=porto-keycloak`
 
 The realm export lives once at the monorepo root (`./keycloak-realm.json`). All three apps reference it via `quarkus.keycloak.devservices.realm-path=../keycloak-realm.json`.
 
@@ -167,7 +167,7 @@ See [`RUNBOOK.md`](RUNBOOK.md) for the moment-by-moment script of the three live
 
 Two follow-ups the demo deliberately leaves out:
 
-1. **Token exchange delegation with an `act` claim.** The exchanged token would name both the user and the agent acting for them, replacing the `X-Mcp-Acr` / `X-Mcp-Client` trusted-header shortcut. Waiting on the feature to stabilise in Keycloak (preview in 26.8).
+1. **Token exchange delegation with an `act` claim.** The exchanged token names both the user and the agent acting for them, so the API no longer has to infer the agent from `azp`. Preview in Keycloak 26.8, and not enough on its own yet: the delegated token still drops the step-up `acr` and the originating client, so the `X-Mcp-Acr` / `X-Mcp-Client` headers would stay (see "Token exchange and step-up across the hop").
 2. **Enterprise-managed authorization.** An optional MCP extension where the company's identity provider decides which MCP servers employees may use. The IdP issues an identity assertion grant (ID-JAG) via token exchange, and the MCP server's authorization server trades it for an access token: no consent screen per MCP server, central control for IT. It is the same token exchange building block this demo uses downstream, applied at the front door. Showing it would need a separate enterprise IdP in front of the MCP server's authorization server, which is out of scope for this talk.
 
 ## Brand palette (lifted from the deck)

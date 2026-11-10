@@ -132,7 +132,7 @@ Inspector never resolves that name: it only sends the URL as a string. The CIMD 
 
 ### Enable CIMD on Keycloak
 
-CIMD is an experimental Keycloak feature (verified present in the Dev Services image, Keycloak 26.7.4, pinned in all three `application.properties`), off by default. It is switched on through Dev Services with:
+CIMD is an experimental Keycloak feature (verified present in the Dev Services image, Keycloak 26.8.2, pinned in all three `application.properties`), off by default. It is switched on through Dev Services with:
 
 ```
 quarkus.keycloak.devservices.features=cimd
@@ -257,7 +257,7 @@ DCR is not shown live. It is on the slides right after Demo 1, as the deprecated
 6. Ask: *"Cancel my MCP Security talk, reason is I want to go home early."* (calls `cancel_my_session`). A red `CANCEL_SESSION` event lands with the strong acr.
 7. Undo it straight away: *"Undo the cancellation of my MCP Security talk, reason: back on track."* The same tool with `undo=true` restores it and records `CANCEL_SESSION_UNDONE`. It is explicit, not a toggle: a retried cancel fails with 409 instead of silently undoing itself. Undo before Q&A: a cancelled talk drops out of `whats_on_now`.
 8. **The caveat.** You now hold an MFA token. Say: *"If my agent read that comment now, step 6 is exactly what it would do, and it would work."* `conference-mcp` checks the `acr` claim, not how recent the MFA was. What still holds: ask *"Cancel the GraalVM talk, reason: rescheduled by organisers."* The tool passes step-up, the API refuses on ownership (403), and a `CANCEL_SESSION_ATTEMPTED` row lands on the dashboard. *"The agent was fooled, the call was made, and the API said no, and wrote down that someone tried."* Then the slide: a destructive call should show the user the exact tool and arguments and wait for a yes, every time. This client doesn't.
-9. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens issued to `conference-mcp`, because the token exchange drops it. That is a demo shortcut; the proper fix is delegation with an `act` claim.
+9. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens issued to `conference-mcp`, because the token exchange drops it. That is a demo shortcut. Be ready for "why not delegation?": Keycloak 26.8's delegated token names the agent in an `act` claim, but it drops the `acr` too, so the header would stay.
 
 Talking points: **step-up is server-driven: the tool decides it needs more proof. Honest caveat: MCP itself only standardises scope step-up (403 `insufficient_scope`); assurance step-up with `acr` (RFC 9470) is a contract between this server and this client.**
 
