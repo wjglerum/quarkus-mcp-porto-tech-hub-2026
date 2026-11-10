@@ -1,11 +1,11 @@
 :root {
     --bg:        #0E1116;
     --surface:   #171B22;
-    --surface-2: #1F2530;
-    --border:    #2A313C;
+    --surface-2: #252C38;
+    --border:    #3A4352;
     --fg:        #F5F7FA;
-    --fg-muted:  #9AA4B2;
-    --fg-dim:    #5F6B7A;
+    --fg-muted:  #B4BECB;
+    --fg-dim:    #8B96A6;
     --brand:     #0088D3;
     --brand-2:   #2DA1E2;
     --amber:     #F2A65A;
@@ -16,6 +16,8 @@
 }
 
 * { box-sizing: border-box; }
+
+html { font-size: 16px; }
 
 html, body {
     margin: 0;
@@ -56,7 +58,7 @@ body::before {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 14px;
+    font-size: 0.875rem;
     letter-spacing: 0.02em;
 }
 
@@ -80,7 +82,7 @@ body::before {
     align-items: center;
     gap: 10px;
     color: var(--fg-muted);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-family: var(--font-mono);
 }
 
@@ -105,7 +107,7 @@ body::before {
 
 main {
     flex: 1;
-    max-width: 1100px;
+    max-width: 68.75rem;
     width: 100%;
     margin: 0 auto;
     padding: 56px 32px 24px;
@@ -116,7 +118,7 @@ main {
 }
 
 .hero h1 {
-    font-size: 56px;
+    font-size: 3.5rem;
     line-height: 1.05;
     font-weight: 700;
     margin: 0 0 20px;
@@ -124,20 +126,20 @@ main {
 }
 
 .hero-accent {
-    color: var(--brand);
+    color: var(--brand-2);
 }
 
 .hero-sub {
     color: var(--fg-muted);
-    max-width: 620px;
-    font-size: 17px;
+    max-width: 38.75rem;
+    font-size: 1.0625rem;
     line-height: 1.55;
     margin: 0;
 }
 
 .hero-sub code {
     font-family: var(--font-mono);
-    font-size: 15px;
+    font-size: 0.9375rem;
     color: var(--amber);
     background: var(--surface);
     padding: 1px 6px;
@@ -181,7 +183,7 @@ main {
     align-items: center;
     margin-bottom: 12px;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
 }
 
 .event-type {
@@ -196,17 +198,17 @@ main {
 
 .event-body {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 12.5rem 1fr;
     column-gap: 24px;
     row-gap: 6px;
     margin: 0;
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 .event-body dt {
     color: var(--fg-muted);
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
     padding-top: 2px;
 }
 
@@ -217,13 +219,13 @@ main {
 
 .value.mono {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
     color: var(--fg);
 }
 
 .value.action {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 0.8125rem;
     font-weight: 600;
     color: var(--brand-2);
     text-transform: none;
@@ -236,7 +238,7 @@ main {
 .value.detail {
     color: var(--fg-muted);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 0.75rem;
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
@@ -245,7 +247,7 @@ main {
 footer {
     padding: 16px 32px;
     color: var(--fg-dim);
-    font-size: 12px;
+    font-size: 0.75rem;
     font-family: var(--font-mono);
     border-top: 1px solid var(--border);
     display: flex;
@@ -253,7 +255,12 @@ footer {
 }
 
 @media (max-width: 760px) {
-    .hero h1 { font-size: 36px; }
+    .hero h1 { font-size: 2.25rem; }
     .event-body { grid-template-columns: 1fr; row-gap: 2px; }
     .event-body dt { padding-top: 8px; }
 }
+
+/* Scale up on large displays and projectors so small labels stay readable. */
+@media (min-width: 1600px) { html { font-size: 18px; } }
+@media (min-width: 2200px) { html { font-size: 21px; } }
+@media (min-width: 3000px) { html { font-size: 26px; } }
