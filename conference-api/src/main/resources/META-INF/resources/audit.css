@@ -4,13 +4,13 @@
     --surface-2: #252C38;
     --border:    #3A4352;
     --fg:        #F5F7FA;
-    --fg-muted:  #B4BECB;
-    --fg-dim:    #8B96A6;
+    --fg-muted:  #CDD5DF;
+    --fg-dim:    #ABB5C3;
     --brand:     #0088D3;
-    --brand-2:   #2DA1E2;
+    --brand-2:   #5DBBEE;
     --amber:     #F2A65A;
     --green:     #66D19E;
-    --red:       #E5645A;
+    --red:       #FF8A80;
     --font-sans: -apple-system, "Helvetica Neue", "Segoe UI", Calibri, sans-serif;
     --font-mono: "JetBrains Mono", "Fira Code", Consolas, "Menlo", monospace;
 }
@@ -163,7 +163,7 @@ main {
 .event {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--brand);
+    border-left: 4px solid var(--brand);
     border-radius: 8px;
     padding: 18px 22px;
     animation: appear 0.32s ease-out;
@@ -238,7 +238,7 @@ main {
 .value.detail {
     color: var(--fg-muted);
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
@@ -247,7 +247,7 @@ main {
 footer {
     padding: 16px 32px;
     color: var(--fg-dim);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-family: var(--font-mono);
     border-top: 1px solid var(--border);
     display: flex;
@@ -261,6 +261,7 @@ footer {
 }
 
 /* Scale up on large displays and projectors so small labels stay readable. */
-@media (min-width: 1600px) { html { font-size: 18px; } }
-@media (min-width: 2200px) { html { font-size: 21px; } }
-@media (min-width: 3000px) { html { font-size: 26px; } }
+@media (min-width: 1400px) { html { font-size: 18px; } }
+@media (min-width: 1800px) { html { font-size: 20px; } }
+@media (min-width: 2400px) { html { font-size: 24px; } }
+@media (min-width: 3200px) { html { font-size: 30px; } }

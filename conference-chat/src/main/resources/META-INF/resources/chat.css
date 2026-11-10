@@ -4,14 +4,14 @@
     --surface-2: #252C38;
     --border:    #3A4352;
     --fg:        #F5F7FA;
-    --fg-muted:  #B4BECB;
-    --fg-dim:    #8B96A6;
+    --fg-muted:  #CDD5DF;
+    --fg-dim:    #ABB5C3;
     --brand:     #0088D3;
     --brand-deep:#005F96;
-    --brand-2:   #2DA1E2;
+    --brand-2:   #5DBBEE;
     --amber:     #F2A65A;
     --green:     #66D19E;
-    --red:       #E5645A;
+    --red:       #FF8A80;
     --font-sans: -apple-system, "Helvetica Neue", "Segoe UI", Calibri, sans-serif;
     --font-mono: "JetBrains Mono", "Fira Code", Consolas, "Menlo", monospace;
 }
@@ -41,7 +41,7 @@ body::before {
     background: var(--surface);
     border-top: 1px solid var(--border);
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: var(--fg-dim);
 }
 
@@ -82,7 +82,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
     overflow-y: auto;
 }
 .sidebar-title {
-    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--fg-dim); margin: 0 0 10px; font-weight: 600;
 }
 .sidebar-title:not(:first-child) { margin-top: 28px; }
@@ -90,7 +90,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 .quick-prompts { display: grid; gap: 8px; }
 .quick-prompt {
     text-align: left; background: var(--surface-2);
-    border: 1px solid var(--border); border-top: 3px solid var(--brand);
+    border: 1px solid var(--border); border-top: 4px solid var(--brand);
     color: var(--fg); padding: 10px 12px; border-radius: 6px;
     font-family: inherit; font-size: 0.8125rem; cursor: pointer;
     transition: background 120ms, border-color 120ms;
@@ -108,12 +108,12 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 .quick-prompt[data-tier="step-up"] .qp-icon { fill: var(--amber); }
 .quick-prompt[data-tier="speaker"] .qp-icon { fill: var(--brand-2); }
 .quick-prompt .tier {
-    display: block; font-size: 0.75rem; color: var(--fg-dim);
+    display: block; font-size: 0.8125rem; color: var(--fg-dim);
     margin-top: 4px; font-family: var(--font-mono); text-transform: lowercase;
 }
 
 
-.identity { font-size: 0.75rem; font-family: var(--font-mono); color: var(--fg-muted); margin: 0; }
+.identity { font-size: 0.8125rem; font-family: var(--font-mono); color: var(--fg-muted); margin: 0; }
 .identity dt { color: var(--fg-dim); }
 .identity dd { margin: 0 0 8px; color: var(--fg); word-break: break-all; }
 .identity dd.amber { color: var(--amber); }
@@ -175,7 +175,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 }
 .bubble-meta {
     display: flex; justify-content: space-between; align-items: center;
-    font-family: var(--font-mono); font-size: 0.75rem;
+    font-family: var(--font-mono); font-size: 0.8125rem;
     color: var(--fg-dim); margin-bottom: 6px;
     text-transform: lowercase; letter-spacing: 0.04em;
 }
@@ -190,7 +190,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 }
 .session-summary-head {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: var(--fg-dim);
     text-transform: lowercase;
     letter-spacing: 0.04em;
@@ -198,7 +198,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 .session-row {
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--green);
+    border-left: 4px solid var(--green);
     border-radius: 8px;
     padding: 8px 12px;
 }
@@ -209,33 +209,33 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 .session-row.cancelled .session-title { text-decoration: line-through; }
 .session-meta {
     display: flex; align-items: center; gap: 8px;
-    font-family: var(--font-mono); font-size: 0.75rem;
+    font-family: var(--font-mono); font-size: 0.8125rem;
     color: var(--amber);
 }
 .session-room {
     margin-left: auto;
     padding: 1px 8px; border-radius: 999px;
-    font-size: 0.75rem; background: var(--surface);
+    font-size: 0.8125rem; background: var(--surface);
     color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em;
 }
 .session-title { font-size: 0.875rem; font-weight: 600; color: var(--fg); margin-top: 3px; }
-.session-sub { font-size: 0.75rem; color: var(--fg-muted); margin-top: 2px; }
+.session-sub { font-size: 0.8125rem; color: var(--fg-muted); margin-top: 2px; }
 
 .tool-card {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--brand);
+    border-left: 4px solid var(--brand);
     border-radius: 8px;
     padding: 10px 14px;
     margin-top: 8px;
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
 }
 .tool-card.step-up { border-left-color: var(--amber); }
 .tool-card.destructive { border-left-color: var(--red); }
 .tool-head {
     display: flex; align-items: center; gap: 10px;
-    font-size: 0.75rem; color: var(--fg-dim);
+    font-size: 0.8125rem; color: var(--fg-dim);
     text-transform: lowercase;
 }
 .tool-head.subdued { margin-top: 8px; }
@@ -244,7 +244,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 .tool-tier {
     margin-left: auto;
     padding: 1px 8px; border-radius: 999px;
-    font-size: 0.75rem; background: var(--surface-2);
+    font-size: 0.8125rem; background: var(--surface-2);
     color: var(--fg-muted); text-transform: lowercase;
 }
 .tool-args, .tool-result {
@@ -317,6 +317,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
     border: 1px solid var(--border); border-radius: 8px;
     font-family: inherit; font-size: 0.9375rem;
 }
+.composer input::placeholder { color: var(--fg-dim); opacity: 1; }
 .composer input:focus { outline: none; border-color: var(--brand); }
 .send {
     width: 44px; height: 44px;
@@ -337,6 +338,7 @@ main { flex: 1; display: grid; grid-template-columns: 18rem 1fr; gap: 0; min-hei
 }
 
 /* Scale up on large displays and projectors so small labels stay readable. */
-@media (min-width: 1600px) { html { font-size: 18px; } }
-@media (min-width: 2200px) { html { font-size: 21px; } }
-@media (min-width: 3000px) { html { font-size: 26px; } }
+@media (min-width: 1400px) { html { font-size: 18px; } }
+@media (min-width: 1800px) { html { font-size: 20px; } }
+@media (min-width: 2400px) { html { font-size: 24px; } }
+@media (min-width: 3200px) { html { font-size: 30px; } }
