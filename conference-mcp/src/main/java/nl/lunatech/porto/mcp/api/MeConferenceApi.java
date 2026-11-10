@@ -1,7 +1,6 @@
 package nl.lunatech.porto.mcp.api;
 
 import io.quarkiverse.mcp.server.ToolCallException;
-import io.quarkus.oidc.token.propagation.common.AccessToken;
 import io.quarkus.rest.client.reactive.ClientExceptionMapper;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -23,14 +22,15 @@ import nl.lunatech.porto.mcp.dto.SessionFeedbackDto;
 import nl.lunatech.porto.mcp.dto.StepUpRefusalRequest;
 import nl.lunatech.porto.mcp.security.StepUp;
 import org.eclipse.microprofile.rest.client.annotation.RegisterClientHeaders;
+import org.eclipse.microprofile.rest.client.annotation.RegisterProvider;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 import java.util.List;
 
 @RegisterRestClient(configKey = "conference-api-me")
-// The user's token is not forwarded: quarkus.rest-client-oidc-token-propagation.exchange-token
-// swaps it for one minted for conference-api (RFC 8693) before every call.
-@AccessToken
+// The user's token is not forwarded: TokenExchangeFilter swaps it for one minted for
+// conference-api (RFC 8693, delegated when the user consented) before every call.
+@RegisterProvider(TokenExchangeFilter.class)
 @RegisterClientHeaders(ExchangeHopHeaders.class)
 @Path("/api/v1")
 @Consumes(MediaType.APPLICATION_JSON)

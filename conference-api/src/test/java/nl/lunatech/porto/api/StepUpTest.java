@@ -33,6 +33,11 @@ class StepUpTest {
     }
 
     private static String token(String user, Set<String> roles, String acr, String azp) {
+        return token(user, roles, acr, azp, null);
+    }
+
+    /** {@code act} as Keycloak's delegated token exchange sets it: the acting client. */
+    private static String token(String user, Set<String> roles, String acr, String azp, String act) {
         JwtClaimsBuilder claims = Jwt.preferredUserName(user)
                 .issuer("https://server.example.com")
                 .audience("https://service.example.com")
@@ -42,6 +47,9 @@ class StepUpTest {
         }
         if (azp != null) {
             claims.claim("azp", azp);
+        }
+        if (act != null) {
+            claims.claim("act", Map.of("sub", "service-account-" + act, "client_id", act));
         }
         return claims.jws().keyId("1").sign("privateKey.jwk");
     }
@@ -155,6 +163,37 @@ class StepUpTest {
                 .then().statusCode(200)
                 .body("find { it.action == 'VIEW_SESSION_ATTENDEES' && it.executedByClient == 'conference-chat via conference-mcp' }.tokenAcr",
                         equalTo(MFA_ACR));
+    }
+
+    @Test
+    void delegatedTokenRecordsTheActorFromItsActClaim() {
+        // A delegated exchange (the user consented to delegation:client:conference-mcp): the token
+        // itself names conference-mcp as the actor. The acr still has to come from the header.
+        int id = wjgSessionId();
+        given().auth().oauth2(token("willem.jan", Set.of("attendee", "speaker"), "1", "conference-mcp", "conference-mcp"))
+                .header("X-Mcp-Acr", MFA_ACR)
+                .header("X-Mcp-Client", "conference-chat")
+                .when().get("/api/v1/sessions/" + id + "/attendees")
+                .then().statusCode(200);
+
+        given().queryParam("limit", 30)
+                .when().get("/api/v1/audit/recent")
+                .then().statusCode(200)
+                .body("find { it.action == 'VIEW_SESSION_ATTENDEES' && it.tokenAct == 'conference-mcp' }.executedByClient",
+                        equalTo("conference-chat via conference-mcp"))
+                .body("find { it.action == 'VIEW_SESSION_ATTENDEES' && it.tokenAct == 'conference-mcp' }.tokenAcr",
+                        equalTo(MFA_ACR));
+    }
+
+    @Test
+    void aDelegatedTokenForAnotherActorCannotAssertTheAcr() {
+        // The act claim names who is acting; only conference-mcp may assert the acr it verified.
+        int id = wjgSessionId();
+        given().auth().oauth2(token("willem.jan", Set.of("attendee", "speaker"), "1", "conference-mcp", "some-other-agent"))
+                .header("X-Mcp-Acr", MFA_ACR)
+                .when().get("/api/v1/sessions/" + id + "/attendees")
+                .then().statusCode(401)
+                .header("WWW-Authenticate", containsString("insufficient_user_authentication"));
     }
 
     @Test

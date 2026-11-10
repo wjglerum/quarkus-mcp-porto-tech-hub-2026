@@ -11,10 +11,12 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
  * Step-up (RFC 9470) for the speaker endpoints, across a token exchange hop.
  *
  * <p>conference-mcp does not forward the user's token: it exchanges it (RFC 8693) for one with
- * {@code aud=conference-api} and {@code azp=conference-mcp}. Keycloak's standard token exchange
- * does not carry the step-up {@code acr} into that new token, so the hop that saw the original
- * token has to assert it. Only a token issued to {@link #TRUSTED_HOP} can make that assertion,
- * and only conference-mcp holds that client's secret; for any other caller the token's own
+ * {@code aud=conference-api} and {@code azp=conference-mcp}; when the user consented to
+ * delegation, the token also carries {@code act} naming conference-mcp. Neither Keycloak's
+ * standard nor its delegated token exchange carries the step-up {@code acr} into that new token,
+ * nor the client the user signed in with, so the hop that saw the original token has to assert
+ * them. Only a token whose acting client is {@link #TRUSTED_HOP} can make that assertion, and
+ * only conference-mcp holds that client's secret; for any other caller the token's own
  * {@code acr} is all that counts.
  */
 @RequestScoped
@@ -41,7 +43,7 @@ public class StepUp {
     /** The client that acted: "conference-chat via conference-mcp" across the hop, else the token's azp. */
     public String executedByClient() {
         String origin = fromTrustedHop(CLIENT_HEADER);
-        return origin != null ? origin + " via " + TRUSTED_HOP : Tokens.azp(jwt);
+        return origin != null ? origin + " via " + TRUSTED_HOP : Tokens.actingClient(jwt);
     }
 
     /** Throws the RFC 9470 challenge (401 + WWW-Authenticate) unless the request carries MFA. */
@@ -56,7 +58,7 @@ public class StepUp {
     }
 
     private String fromTrustedHop(String header) {
-        if (!TRUSTED_HOP.equals(Tokens.azp(jwt))) return null;
+        if (!TRUSTED_HOP.equals(Tokens.actingClient(jwt))) return null;
         String value = request.getHeader(header);
         return value == null || value.isBlank() ? null : value;
     }

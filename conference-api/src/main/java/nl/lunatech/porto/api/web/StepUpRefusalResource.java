@@ -43,7 +43,7 @@ public class StepUpRefusalResource {
     @POST
     public void record(StepUpRefusalRequest req) {
         // Only the hop that saw the user's own token can know it lacked MFA.
-        if (!StepUp.TRUSTED_HOP.equals(Tokens.azp(jwt))) {
+        if (!StepUp.TRUSTED_HOP.equals(Tokens.actingClient(jwt))) {
             throw new ForbiddenException("only " + StepUp.TRUSTED_HOP + " reports step-up refusals");
         }
         String action = req == null ? null : ACTIONS.get(req.tool());

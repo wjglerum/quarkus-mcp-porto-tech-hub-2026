@@ -48,15 +48,16 @@ public class AuditService {
         event.tokenAcr = stepUp.acr();
         event.tokenAmr = Tokens.amr(jwt);
         event.executedByClient = stepUp.executedByClient();
+        event.tokenAct = Tokens.act(jwt);
         event.tokenIss = Tokens.iss(jwt);
         // Audit entries record when the action actually happened, in real time,
         // independent of the simulated conference clock used for the schedule.
         event.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         event.detail = detail;
         event.persist();
-        Log.infof("AUDIT subject=%s action=%s target=%s acr=%s amr=%s client=%s iss=%s",
+        Log.infof("AUDIT subject=%s action=%s target=%s acr=%s amr=%s client=%s act=%s iss=%s",
                 event.attendeeSubject, event.action, event.target, event.tokenAcr, event.tokenAmr,
-                event.executedByClient, event.tokenIss);
+                event.executedByClient, event.tokenAct, event.tokenIss);
     }
 
     private String resolveSubject() {

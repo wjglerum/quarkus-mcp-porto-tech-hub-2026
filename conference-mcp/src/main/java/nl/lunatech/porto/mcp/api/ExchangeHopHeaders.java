@@ -10,9 +10,10 @@ import org.eclipse.microprofile.rest.client.ext.ClientHeadersFactory;
 
 /**
  * What the token exchange loses, asserted by this hop. The token sent to conference-api is a new
- * one (aud=conference-api, azp=conference-mcp); these headers carry the step-up level and the
- * client the user actually signed in with. conference-api trusts them only on tokens issued to
- * conference-mcp.
+ * one (aud=conference-api, azp=conference-mcp, and act=conference-mcp when delegated); neither the
+ * standard nor the delegated exchange carries the step-up level or the client the user actually
+ * signed in with, so these headers do. conference-api trusts them only when the token's acting
+ * client is conference-mcp.
  */
 @ApplicationScoped
 public class ExchangeHopHeaders implements ClientHeadersFactory {

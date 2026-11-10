@@ -1,6 +1,10 @@
 package nl.lunatech.porto.api.security;
 
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+
+import java.util.Map;
 
 /** Reads step-up and provenance claims off an access token; amr is recorded for audit only. */
 public final class Tokens {
@@ -16,6 +20,29 @@ public final class Tokens {
     public static String azp(JsonWebToken jwt) {
         Object azp = jwt == null ? null : jwt.getClaim("azp");
         return azp == null ? null : String.valueOf(azp);
+    }
+
+    /**
+     * The client in the act claim (RFC 8693 delegation): who is acting for the subject. Only
+     * present on a token from a delegated exchange, where Keycloak checked that the user
+     * consented to that client acting for them.
+     */
+    public static String act(JsonWebToken jwt) {
+        Object act = jwt == null ? null : jwt.getClaim("act");
+        if (act instanceof JsonObject json) {
+            return json.get("client_id") instanceof JsonString id ? id.getString() : null;
+        }
+        if (act instanceof Map<?, ?> map) {
+            Object id = map.get("client_id");
+            return id == null ? null : String.valueOf(id);
+        }
+        return null;
+    }
+
+    /** The client acting on this request: the act claim on a delegated token, else azp. */
+    public static String actingClient(JsonWebToken jwt) {
+        String act = act(jwt);
+        return act != null ? act : azp(jwt);
     }
 
     /** The token issuer (iss): the authorization server that minted the token. */

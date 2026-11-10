@@ -62,6 +62,7 @@
             node.querySelector('[data-bind="target"]').textContent = e.target || '';
             node.querySelector('[data-bind="subject"]').textContent = e.attendeeSubject || '';
             node.querySelector('[data-bind="client"]').textContent = e.executedByClient || '-';
+            node.querySelector('[data-bind="act"]').textContent = e.tokenAct || '-';
             node.querySelector('[data-bind="iss"]').textContent = e.tokenIss || '-';
             node.querySelector('[data-bind="acr"]').textContent = e.tokenAcr || '-';
             node.querySelector('[data-bind="amr"]').textContent = e.tokenAmr || '-';

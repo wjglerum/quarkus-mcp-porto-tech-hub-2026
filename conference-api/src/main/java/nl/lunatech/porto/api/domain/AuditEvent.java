@@ -31,6 +31,11 @@ public class AuditEvent extends PanacheEntity {
     @Column(name = "executed_by_client")
     public String executedByClient;
 
+    // The act claim's client (RFC 8693 delegation): set only when the token itself says which
+    // client acted for the user, after the user consented to it. Null on a standard exchange.
+    @Column(name = "token_act")
+    public String tokenAct;
+
     // The authorization server that minted the token (iss claim), proving where the identity
     // and the authorizing claims came from.
     @Column(name = "token_iss")

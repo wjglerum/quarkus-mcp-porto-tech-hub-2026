@@ -12,6 +12,7 @@ public record AuditEventDto(
         String tokenAcr,
         String tokenAmr,
         String executedByClient,
+        String tokenAct,
         String tokenIss,
         OffsetDateTime createdAt,
         String detail
@@ -19,6 +20,6 @@ public record AuditEventDto(
     public static AuditEventDto of(AuditEvent e) {
         return new AuditEventDto(
                 e.id, e.attendeeSubject, e.action, e.target,
-                e.tokenAcr, e.tokenAmr, e.executedByClient, e.tokenIss, e.createdAt, e.detail);
+                e.tokenAcr, e.tokenAmr, e.executedByClient, e.tokenAct, e.tokenIss, e.createdAt, e.detail);
     }
 }

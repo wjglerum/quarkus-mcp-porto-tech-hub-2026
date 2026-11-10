@@ -95,6 +95,7 @@
       "attributes" : { }
     } ],
     "client" : {
+      "conference-mcp-devui" : [ ],
       "mcp-clients" : [ ],
       "realm-management" : [ {
         "id" : "f3c85f87-09b5-4d76-bfe8-cafdb47433d3",
@@ -293,6 +294,7 @@
         "containerId" : "1e166672-6083-4947-acbc-1d173a09be34",
         "attributes" : { }
       } ],
+      "admin-permissions" : [ ],
       "security-admin-console" : [ ],
       "admin-cli" : [ ],
       "account-console" : [ ],
@@ -394,6 +396,10 @@
     "clientRole" : false,
     "containerId" : "e04f706b-6546-490a-a8d4-15ab3b356f31"
   },
+  "adminPermissionsClient" : {
+    "id" : "5e3e2799-0a8e-4847-9e93-ebe226fc4860",
+    "clientId" : "admin-permissions"
+  },
   "requiredCredentials" : [ "password" ],
   "otpPolicyType" : "totp",
   "otpPolicyAlgorithm" : "HmacSHA1",
@@ -494,6 +500,20 @@
     "notBefore" : 0,
     "groups" : [ ]
   }, {
+    "id" : "eb7f0e1b-d58a-4385-b8a4-18969d8963cc",
+    "username" : "service-account-conference-mcp",
+    "emailVerified" : false,
+    "enabled" : true,
+    "createdTimestamp" : 1794313422745,
+    "totp" : false,
+    "serviceAccountClientId" : "conference-mcp",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-porto" ],
+    "notBefore" : 0,
+    "groups" : [ ]
+  }, {
     "id" : "8fe59c1e-13ae-4b97-a1f7-6b5eadc4dee4",
     "username" : "willem.jan",
     "firstName" : "Willem Jan",
@@ -524,11 +544,11 @@
     "groups" : [ ]
   } ],
   "scopeMappings" : [ {
-    "clientScope" : "offline_access",
-    "roles" : [ "offline_access" ]
-  }, {
     "clientScope" : "attendee",
     "roles" : [ "attendee", "speaker" ]
+  }, {
+    "clientScope" : "offline_access",
+    "roles" : [ "offline_access" ]
   } ],
   "clientScopeMappings" : {
     "account" : [ {
@@ -629,13 +649,225 @@
     "protocol" : "openid-connect",
     "attributes" : {
       "realm_client" : "false",
-      "client.use.lightweight.access.token.enabled" : "true"
+      "client.use.lightweight.access.token.enabled" : "true",
+      "post.logout.redirect.uris" : "+"
     },
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : true,
     "nodeReRegistrationTimeout" : 0,
-    "defaultClientScopes" : [ ],
+    "defaultClientScopes" : [ "kc-admin-api" ],
     "optionalClientScopes" : [ ]
+  }, {
+    "id" : "5e3e2799-0a8e-4847-9e93-ebe226fc4860",
+    "clientId" : "admin-permissions",
+    "surrogateAuthRequired" : false,
+    "enabled" : true,
+    "alwaysDisplayInConsole" : false,
+    "redirectUris" : [ ],
+    "webOrigins" : [ ],
+    "notBefore" : 0,
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : false,
+    "serviceAccountsEnabled" : true,
+    "authorizationServicesEnabled" : true,
+    "publicClient" : false,
+    "frontchannelLogout" : false,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "realm_client" : "false"
+    },
+    "authenticationFlowBindingOverrides" : { },
+    "fullScopeAllowed" : false,
+    "nodeReRegistrationTimeout" : 0,
+    "defaultClientScopes" : [ "web-origins", "acr", "profile", "roles", "basic", "email" ],
+    "optionalClientScopes" : [ "attendee", "delegation:user", "delegation:client", "offline_access", "microprofile-jwt" ],
+    "authorizationSettings" : {
+      "allowRemoteResourceManagement" : true,
+      "policyEnforcementMode" : "ENFORCING",
+      "resources" : [ {
+        "name" : "Groups",
+        "type" : "Groups",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "manage-members"
+        }, {
+          "name" : "view"
+        }, {
+          "name" : "manage-membership-of-members"
+        }, {
+          "name" : "manage-membership"
+        }, {
+          "name" : "delegate-members"
+        }, {
+          "name" : "view-members"
+        }, {
+          "name" : "manage"
+        }, {
+          "name" : "impersonate-members"
+        } ]
+      }, {
+        "name" : "Users",
+        "type" : "Users",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "delegate"
+        }, {
+          "name" : "manage-group-membership"
+        }, {
+          "name" : "view"
+        }, {
+          "name" : "impersonate"
+        }, {
+          "name" : "map-roles"
+        }, {
+          "name" : "reset-password"
+        }, {
+          "name" : "manage"
+        } ]
+      }, {
+        "name" : "Clients",
+        "type" : "Clients",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "view"
+        }, {
+          "name" : "map-roles-client-scope"
+        }, {
+          "name" : "map-roles"
+        }, {
+          "name" : "manage"
+        }, {
+          "name" : "map-roles-composite"
+        } ]
+      }, {
+        "name" : "Organizations",
+        "type" : "Organizations",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "view"
+        }, {
+          "name" : "manage"
+        } ]
+      }, {
+        "name" : "Roles",
+        "type" : "Roles",
+        "ownerManagedAccess" : false,
+        "attributes" : { },
+        "uris" : [ ],
+        "scopes" : [ {
+          "name" : "map-role-composite"
+        }, {
+          "name" : "map-role-client-scope"
+        }, {
+          "name" : "map-role"
+        } ]
+      } ],
+      "policies" : [ {
+        "name" : "conference-mcp is an actor",
+        "type" : "client",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "clients" : "[\"conference-mcp\"]"
+        }
+      }, {
+        "name" : "conference-mcp may act for any user",
+        "type" : "scope",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "UNANIMOUS",
+        "config" : {
+          "defaultResourceType" : "Users",
+          "resources" : "[\"Users\"]",
+          "scopes" : "[\"delegate\"]",
+          "applyPolicies" : "[\"conference-mcp is an actor\"]"
+        }
+      } ],
+      "scopes" : [ {
+        "name" : "manage-group-membership"
+      }, {
+        "name" : "map-roles-client-scope"
+      }, {
+        "name" : "delegate-members"
+      }, {
+        "name" : "view-members"
+      }, {
+        "name" : "map-role"
+      }, {
+        "name" : "reset-password"
+      }, {
+        "name" : "manage"
+      }, {
+        "name" : "impersonate-members"
+      }, {
+        "name" : "manage-members"
+      }, {
+        "name" : "delegate"
+      }, {
+        "name" : "view"
+      }, {
+        "name" : "manage-membership-of-members"
+      }, {
+        "name" : "manage-membership"
+      }, {
+        "name" : "impersonate"
+      }, {
+        "name" : "map-role-composite"
+      }, {
+        "name" : "map-roles"
+      }, {
+        "name" : "map-role-client-scope"
+      }, {
+        "name" : "map-roles-composite"
+      } ],
+      "decisionStrategy" : "UNANIMOUS",
+      "authorizationSchema" : {
+        "resourceTypes" : {
+          "Organizations" : {
+            "type" : "Organizations",
+            "scopes" : [ "manage", "view" ],
+            "scopeAliases" : { }
+          },
+          "Clients" : {
+            "type" : "Clients",
+            "scopes" : [ "view", "map-roles-client-scope", "map-roles", "manage", "map-roles-composite" ],
+            "scopeAliases" : { }
+          },
+          "Users" : {
+            "type" : "Users",
+            "scopes" : [ "delegate", "map-roles", "view", "reset-password", "manage-group-membership", "impersonate", "manage" ],
+            "scopeAliases" : {
+              "delegate" : [ "delegate-members" ],
+              "manage-group-membership" : [ "manage-membership-of-members" ],
+              "view" : [ "view-members" ],
+              "manage" : [ "manage-members" ],
+              "impersonate" : [ "impersonate-members" ]
+            },
+            "groupType" : "Groups"
+          },
+          "Groups" : {
+            "type" : "Groups",
+            "scopes" : [ "impersonate-members", "view", "manage", "delegate-members", "view-members", "manage-membership-of-members", "manage-members", "manage-membership" ],
+            "scopeAliases" : { }
+          },
+          "Roles" : {
+            "type" : "Roles",
+            "scopes" : [ "map-role", "map-role-composite", "map-role-client-scope" ],
+            "scopeAliases" : { }
+          }
+        }
+      }
+    }
   }, {
     "id" : "06198230-d079-4ff9-9681-6a3d4592ecf8",
     "clientId" : "broker",
@@ -644,6 +876,7 @@
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
+    "secret" : "dcR1RNpqJq4BnAhn9XZG51AY4eia6DSdeq6gkgFVfgWCqYgFsPRqyQ9eZRi8jHxVGCADFatMJKeBBwVQDNRk3W",
     "redirectUris" : [ ],
     "webOrigins" : [ ],
     "notBefore" : 0,
@@ -657,7 +890,9 @@
     "frontchannelLogout" : false,
     "protocol" : "openid-connect",
     "attributes" : {
-      "realm_client" : "true"
+      "realm_client" : "true",
+      "client.secret.creation.time" : "1794313407",
+      "post.logout.redirect.uris" : "+"
     },
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : false,
@@ -708,7 +943,7 @@
     "webOrigins" : [ "+" ],
     "notBefore" : 0,
     "bearerOnly" : false,
-    "consentRequired" : false,
+    "consentRequired" : true,
     "standardFlowEnabled" : true,
     "implicitFlowEnabled" : false,
     "directAccessGrantsEnabled" : false,
@@ -724,8 +959,8 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : true,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "web-origins", "acr", "attendee", "profile", "roles", "basic", "email" ],
-    "optionalClientScopes" : [ "offline_access", "microprofile-jwt" ]
+    "defaultClientScopes" : [ "web-origins", "service_account", "acr", "attendee", "profile", "roles", "basic", "email" ],
+    "optionalClientScopes" : [ "offline_access", "delegation:client", "microprofile-jwt" ]
   }, {
     "id" : "d22956c0-8df8-4e7e-897d-3182debcc91f",
     "clientId" : "conference-mcp",
@@ -743,7 +978,7 @@
     "standardFlowEnabled" : false,
     "implicitFlowEnabled" : false,
     "directAccessGrantsEnabled" : false,
-    "serviceAccountsEnabled" : false,
+    "serviceAccountsEnabled" : true,
     "publicClient" : false,
     "frontchannelLogout" : false,
     "protocol" : "openid-connect",
@@ -756,7 +991,37 @@
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : true,
     "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "web-origins", "acr", "profile", "roles", "basic", "conference-api", "email" ],
+    "defaultClientScopes" : [ "web-origins", "service_account", "acr", "profile", "roles", "basic", "conference-api", "email" ],
+    "optionalClientScopes" : [ "offline_access", "microprofile-jwt" ]
+  }, {
+    "id" : "7c3f9a52-2d1e-4b8a-9f6e-0a4c1d2e3b51",
+    "clientId" : "conference-mcp-devui",
+    "name" : "Quarkus Dev UI for conference-mcp (dev only)",
+    "description" : "Public client the Dev UI Keycloak provider page uses for 'Log into Single Page Application'.",
+    "surrogateAuthRequired" : false,
+    "enabled" : true,
+    "alwaysDisplayInConsole" : false,
+    "clientAuthenticatorType" : "client-secret",
+    "redirectUris" : [ "http://localhost:8081/q/dev-ui/*" ],
+    "webOrigins" : [ "+" ],
+    "notBefore" : 0,
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : true,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : false,
+    "serviceAccountsEnabled" : false,
+    "publicClient" : true,
+    "frontchannelLogout" : false,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "realm_client" : "false",
+      "post.logout.redirect.uris" : "+"
+    },
+    "authenticationFlowBindingOverrides" : { },
+    "fullScopeAllowed" : true,
+    "nodeReRegistrationTimeout" : -1,
+    "defaultClientScopes" : [ "web-origins", "acr", "attendee", "profile", "roles", "basic", "email" ],
     "optionalClientScopes" : [ "offline_access", "microprofile-jwt" ]
   }, {
     "id" : "ddad99e0-c1d8-4d35-9da6-e5865b5ce216",
@@ -789,36 +1054,6 @@
     "defaultClientScopes" : [ "web-origins", "acr", "profile", "roles", "basic", "email" ],
     "optionalClientScopes" : [ "attendee", "offline_access", "microprofile-jwt" ]
   }, {
-    "id" : "7c3f9a52-2d1e-4b8a-9f6e-0a4c1d2e3b51",
-    "clientId" : "conference-mcp-devui",
-    "name" : "Quarkus Dev UI for conference-mcp (dev only)",
-    "description" : "Public client the Dev UI Keycloak provider page uses for 'Log into Single Page Application'.",
-    "surrogateAuthRequired" : false,
-    "enabled" : true,
-    "alwaysDisplayInConsole" : false,
-    "clientAuthenticatorType" : "client-secret",
-    "redirectUris" : [ "http://localhost:8081/q/dev-ui/*" ],
-    "webOrigins" : [ "+" ],
-    "notBefore" : 0,
-    "bearerOnly" : false,
-    "consentRequired" : false,
-    "standardFlowEnabled" : true,
-    "implicitFlowEnabled" : false,
-    "directAccessGrantsEnabled" : false,
-    "serviceAccountsEnabled" : false,
-    "publicClient" : true,
-    "frontchannelLogout" : false,
-    "protocol" : "openid-connect",
-    "attributes" : {
-      "realm_client" : "false",
-      "post.logout.redirect.uris" : "+"
-    },
-    "authenticationFlowBindingOverrides" : { },
-    "fullScopeAllowed" : true,
-    "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "web-origins", "acr", "attendee", "profile", "roles", "basic", "email" ],
-    "optionalClientScopes" : [ "offline_access", "microprofile-jwt" ]
-  }, {
     "id" : "1e166672-6083-4947-acbc-1d173a09be34",
     "clientId" : "realm-management",
     "name" : "${client_realm-management}",
@@ -826,6 +1061,7 @@
     "enabled" : true,
     "alwaysDisplayInConsole" : false,
     "clientAuthenticatorType" : "client-secret",
+    "secret" : "Vz7PrJSo9sd5bMBjBlY69JIOBNOe5lKLU9TQ0tYj8lO2iQCvZs1Ed61wdobZGZ8BSWdpICj9ZDlgfiITvYrSSy",
     "redirectUris" : [ ],
     "webOrigins" : [ ],
     "notBefore" : 0,
@@ -839,7 +1075,9 @@
     "frontchannelLogout" : false,
     "protocol" : "openid-connect",
     "attributes" : {
-      "realm_client" : "true"
+      "realm_client" : "true",
+      "client.secret.creation.time" : "1794313407",
+      "post.logout.redirect.uris" : "+"
     },
     "authenticationFlowBindingOverrides" : { },
     "fullScopeAllowed" : false,
@@ -893,7 +1131,7 @@
         "jsonType.label" : "String"
       }
     } ],
-    "defaultClientScopes" : [ ],
+    "defaultClientScopes" : [ "kc-admin-api" ],
     "optionalClientScopes" : [ ]
   } ],
   "clientScopes" : [ {
@@ -1001,6 +1239,56 @@
       }
     } ]
   }, {
+    "id" : "f9b9898a-dfdd-4b09-b3c2-c4c9201479bc",
+    "name" : "delegation:client",
+    "description" : "OpenID Connect scope for agent/client token exchange delegation",
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "include.in.token.scope" : "true",
+      "parameterized.scope.type" : "client-delegation",
+      "display.on.consent.screen" : "true",
+      "always.display.consent" : "true",
+      "is.parameterized.scope" : "true",
+      "consent.screen.text" : "${clientDelegationScopeConsentText}"
+    },
+    "protocolMappers" : [ {
+      "id" : "292fd1df-0cf4-455f-bacd-dccaacb1d55f",
+      "name" : "client may_act client_id",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-parameterized-scope-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "id.token.claim" : "true",
+        "introspection.token.claim" : "true",
+        "access.token.claim" : "true",
+        "claim.name" : "may_act.client_id",
+        "jsonType.label" : "String"
+      }
+    }, {
+      "id" : "203c3b80-c1b6-4bfa-a3d2-67da6844f67b",
+      "name" : "client delegation audience",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-parameterized-scope-audience-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "introspection.token.claim" : "true",
+        "access.token.claim" : "true"
+      }
+    }, {
+      "id" : "f7e7d0c8-2c2b-498d-8837-96eb1dc34b88",
+      "name" : "client may_act sub",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-parameterized-scope-client-sub-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "id.token.claim" : "true",
+        "introspection.token.claim" : "true",
+        "access.token.claim" : "true",
+        "claim.name" : "may_act.sub",
+        "jsonType.label" : "String"
+      }
+    } ]
+  }, {
     "id" : "56b73a06-3c04-488e-a514-02bd6b11687c",
     "name" : "phone",
     "description" : "OpenID Connect built-in scope: phone",
@@ -1085,6 +1373,35 @@
         "access.token.claim" : "true",
         "introspection.token.claim" : "true",
         "userinfo.token.claim" : "false"
+      }
+    } ]
+  }, {
+    "id" : "a38b2a69-e951-4214-ba2d-d01cb2f84a9f",
+    "name" : "delegation:user",
+    "description" : "OpenID Connect scope for token exchange delegation",
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "include.in.token.scope" : "true",
+      "parameterized.scope.type" : "user-delegation",
+      "display.on.consent.screen" : "true",
+      "always.display.consent" : "true",
+      "is.parameterized.scope" : "true",
+      "consent.screen.text" : "${userDelegationScopeConsentText}"
+    },
+    "protocolMappers" : [ {
+      "id" : "0f4fa611-cc26-4bc8-9139-d44332673ef1",
+      "name" : "may_act sub",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-parameterized-scope-user-property-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "introspection.token.claim" : "true",
+        "multivalued" : "false",
+        "user.attribute" : "id",
+        "id.token.claim" : "true",
+        "access.token.claim" : "true",
+        "claim.name" : "may_act.sub",
+        "jsonType.label" : "String"
       }
     } ]
   }, {
@@ -1354,7 +1671,6 @@
     "protocol" : "openid-connect",
     "attributes" : {
       "include.in.token.scope" : "false",
-      "consent.screen.text" : "",
       "display.on.consent.screen" : "false"
     },
     "protocolMappers" : [ {
@@ -1608,9 +1924,30 @@
         "access.token.claim" : "true"
       }
     } ]
+  }, {
+    "id" : "7f16be2b-4297-40c5-bb35-31d32fefd663",
+    "name" : "kc-admin-api",
+    "description" : "Grants access to the Keycloak Admin REST API by adding its required audience to the token",
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "include.in.token.scope" : "true",
+      "display.on.consent.screen" : "false"
+    },
+    "protocolMappers" : [ {
+      "id" : "8d4cc0b3-0588-48d6-975d-9be3e3dd6eef",
+      "name" : "admin-api-audience",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-admin-api-audience-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "lightweight.claim" : "true",
+        "introspection.token.claim" : "true",
+        "access.token.claim" : "true"
+      }
+    } ]
   } ],
   "defaultDefaultClientScopes" : [ "basic", "profile", "email", "roles", "web-origins", "acr", "AuthnContextClassRef" ],
-  "defaultOptionalClientScopes" : [ "offline_access", "microprofile-jwt", "attendee" ],
+  "defaultOptionalClientScopes" : [ "offline_access", "microprofile-jwt", "attendee", "delegation:user", "delegation:client" ],
   "browserSecurityHeaders" : {
     "contentSecurityPolicyReportOnly" : "",
     "xContentTypeOptions" : "nosniff",
@@ -1630,14 +1967,28 @@
   "identityProviderMappers" : [ ],
   "components" : {
     "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy" : [ {
+      "id" : "3004460b-e1e2-41a6-9a08-eff3783789b9",
+      "name" : "Default Roles Disabled",
+      "providerId" : "default-roles",
+      "subType" : "authenticated",
+      "subComponents" : { },
+      "config" : { }
+    }, {
       "id" : "b79a6309-bd60-41d9-b994-4b19b48677a6",
       "name" : "Allowed Protocol Mapper Types",
       "providerId" : "allowed-protocol-mappers",
       "subType" : "anonymous",
       "subComponents" : { },
       "config" : {
-        "allowed-protocol-mapper-types" : [ "oidc-sha256-pairwise-sub-mapper", "oidc-address-mapper", "oidc-full-name-mapper", "saml-role-list-mapper", "oidc-usermodel-property-mapper", "oidc-usermodel-attribute-mapper", "saml-user-attribute-mapper", "saml-user-property-mapper" ]
+        "allowed-protocol-mapper-types" : [ "saml-user-property-mapper", "oidc-usermodel-property-mapper", "oidc-sha256-pairwise-sub-mapper", "saml-role-list-mapper", "oidc-usermodel-attribute-mapper", "oidc-full-name-mapper", "saml-user-attribute-mapper", "oidc-address-mapper" ]
       }
+    }, {
+      "id" : "fe568d1d-7968-405d-aa13-e1272a7d8e02",
+      "name" : "Full Scope Disabled",
+      "providerId" : "scope",
+      "subType" : "authenticated",
+      "subComponents" : { },
+      "config" : { }
     }, {
       "id" : "58b16b40-f5e1-4e57-afec-ca6b867fefa3",
       "name" : "Allowed Protocol Mapper Types",
@@ -1645,8 +1996,15 @@
       "subType" : "authenticated",
       "subComponents" : { },
       "config" : {
-        "allowed-protocol-mapper-types" : [ "saml-user-property-mapper", "oidc-usermodel-property-mapper", "saml-role-list-mapper", "oidc-full-name-mapper", "saml-user-attribute-mapper", "oidc-usermodel-attribute-mapper", "oidc-address-mapper", "oidc-sha256-pairwise-sub-mapper" ]
+        "allowed-protocol-mapper-types" : [ "saml-user-property-mapper", "oidc-address-mapper", "oidc-usermodel-attribute-mapper", "oidc-full-name-mapper", "saml-user-attribute-mapper", "oidc-usermodel-property-mapper", "saml-role-list-mapper", "oidc-sha256-pairwise-sub-mapper" ]
       }
+    }, {
+      "id" : "2cb02c95-3067-4eff-a0c7-a77995cc4b8b",
+      "name" : "Default Roles Disabled",
+      "providerId" : "default-roles",
+      "subType" : "anonymous",
+      "subComponents" : { },
+      "config" : { }
     }, {
       "id" : "8411555e-db40-4552-87ad-d72b5ba2afe8",
       "name" : "Allowed Registration Web Origins",
@@ -1688,16 +2046,6 @@
       "config" : { }
     } ],
     "org.keycloak.keys.KeyProvider" : [ {
-      "id" : "15b5d0a4-c4ab-46e3-836e-1af6c53c4de9",
-      "name" : "aes-generated",
-      "providerId" : "aes-generated",
-      "subComponents" : { },
-      "config" : {
-        "kid" : [ "a92d961c-76bb-40cf-9294-abf902d34da2" ],
-        "secret" : [ "jCMZuHIwWYhSfJ4wSZUBOv-DWPq2sj2lbDLwA654E1c" ],
-        "priority" : [ "100" ]
-      }
-    }, {
       "id" : "64162487-a1b3-476b-a9da-db801fe33418",
       "name" : "rsa-enc-generated",
       "providerId" : "rsa-enc-generated",
@@ -1718,6 +2066,16 @@
         "secret" : [ "3TJ7UGOGRUCjh5MyJQ9CiGjHQQdSJNEfXN7feQe2ML8__3fauSL4h0JP6eXyQ2-sJT6aE62OkYJ4P3pIs4JpTzEGB9t69SSg3Y8Ri3avn9T2wl7pWBSLl6hA04QXkM40mjYZfTh_2yFHBjeWgkrOLxKCMl42X2lxH9q-ryFgGuc" ],
         "priority" : [ "100" ],
         "algorithm" : [ "HS512" ]
+      }
+    }, {
+      "id" : "15b5d0a4-c4ab-46e3-836e-1af6c53c4de9",
+      "name" : "aes-generated",
+      "providerId" : "aes-generated",
+      "subComponents" : { },
+      "config" : {
+        "kid" : [ "a92d961c-76bb-40cf-9294-abf902d34da2" ],
+        "secret" : [ "jCMZuHIwWYhSfJ4wSZUBOv-DWPq2sj2lbDLwA654E1c" ],
+        "priority" : [ "100" ]
       }
     }, {
       "id" : "54515368-25df-4c54-ad8c-70e09d32edb7",
@@ -2448,13 +2806,14 @@
     "oauth2DeviceCodeLifespan" : "600",
     "parRequestUriLifespan" : "60",
     "clientSessionMaxLifespan" : "0",
+    "scimApiEnabled" : "false",
     "acr.loa.map" : "{\"urn:porto:mfa\": \"2\"}"
   },
-  "keycloakVersion" : "26.7.4",
+  "keycloakVersion" : "26.8.2",
   "userManagedAccessAllowed" : false,
   "organizationsEnabled" : false,
   "verifiableCredentialsEnabled" : false,
-  "adminPermissionsEnabled" : false,
+  "adminPermissionsEnabled" : true,
   "scimApiEnabled" : false,
   "clientProfiles" : {
     "profiles" : [ {

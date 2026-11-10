@@ -16,5 +16,5 @@
     "code"
   ],
   "token_endpoint_auth_method": "none",
-  "scope": "openid attendee"
+  "scope": "openid attendee delegation:client"
 }

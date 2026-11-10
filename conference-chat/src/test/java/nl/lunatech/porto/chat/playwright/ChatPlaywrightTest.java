@@ -3,6 +3,7 @@ package nl.lunatech.porto.chat.playwright;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.LoadState;
 import io.quarkiverse.playwright.InjectPlaywright;
 import io.quarkiverse.playwright.WithPlaywright;
@@ -63,14 +64,7 @@ class ChatPlaywrightTest {
     @Test
     void willemJanLoginRendersQuteShell() {
         Page page = freshPage();
-        page.navigate(chatBase.toString());
-        page.waitForURL("**/realms/porto/protocol/openid-connect/auth**");
-        page.locator("#username").fill("willem.jan");
-        page.locator("#password").fill("willem.jan");
-        page.locator("#kc-login").click();
-
-        page.waitForURL("**" + chatBase.getHost() + ":" + chatBase.getPort() + "/**");
-        page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+        login(page, "willem.jan");
 
         Locator topbar = page.locator("header.topbar");
         assertThat(topbar.locator(".brand-title").innerText()).contains("Practical MCP Security in Action");
@@ -95,13 +89,7 @@ class ChatPlaywrightTest {
     void stepUpRedirectCarriesAcrValuesAndOtpCompletesMfa() {
         Page page = freshPage();
         // regular password login establishes a session without the MFA acr
-        page.navigate(chatBase.toString());
-        page.waitForURL("**/realms/porto/protocol/openid-connect/auth**");
-        page.locator("#username").fill("willem.jan");
-        page.locator("#password").fill("willem.jan");
-        page.locator("#kc-login").click();
-        page.waitForURL("**" + chatBase.getHost() + ":" + chatBase.getPort() + "/**");
-        page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+        login(page, "willem.jan");
 
         // the step-up endpoint requires the MFA acr; Quarkus must redirect to Keycloak
         // with acr_values so the conditional flow asks for the OTP (Keycloak skips the
@@ -113,9 +101,34 @@ class ChatPlaywrightTest {
         page.locator("#otp").fill(totp("portomcp2026stepupseed"));
         page.locator("#kc-login").click();
 
+        // the delegation consent is never stored, so the step-up login asks for it again
+        page.waitForURL("**/login-actions/**");
+        assertThat(page.locator("body").innerText()).contains("Allow conference-mcp to act on your behalf?");
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Yes")).click();
+
         page.waitForURL("**/step-up**");
         page.waitForLoadState(LoadState.DOMCONTENTLOADED);
         assertThat(page.locator("body").innerText()).contains("MFA complete");
+    }
+
+    /**
+     * Password login, then the consent screen: conference-chat asks for
+     * delegation:client:conference-mcp, which Keycloak always shows and never remembers
+     * beyond the login session.
+     */
+    private void login(Page page, String user) {
+        page.navigate(chatBase.toString());
+        page.waitForURL("**/realms/porto/protocol/openid-connect/auth**");
+        page.locator("#username").fill(user);
+        page.locator("#password").fill(user);
+        page.locator("#kc-login").click();
+
+        page.waitForURL("**/login-actions/**");
+        assertThat(page.locator("body").innerText()).contains("Allow conference-mcp to act on your behalf?");
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Yes")).click();
+
+        page.waitForURL("**" + chatBase.getHost() + ":" + chatBase.getPort() + "/**");
+        page.waitForLoadState(LoadState.DOMCONTENTLOADED);
     }
 
     /** RFC 6238 TOTP matching the realm OTP policy: HmacSHA1, 6 digits, 30 second period. */
@@ -137,14 +150,7 @@ class ChatPlaywrightTest {
     @Test
     void attendeeLoginRendersQuickPromptsWithStepUpTier() {
         Page page = freshPage();
-        page.navigate(chatBase.toString());
-        page.waitForURL("**/realms/porto/protocol/openid-connect/auth**");
-        page.locator("#username").fill("attendee");
-        page.locator("#password").fill("attendee");
-        page.locator("#kc-login").click();
-
-        page.waitForURL("**" + chatBase.getHost() + ":" + chatBase.getPort() + "/**");
-        page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+        login(page, "attendee");
 
         assertThat(page.locator(".quick-prompt").count()).isGreaterThanOrEqualTo(5);
         assertThat(page.locator(".quick-prompt[data-tier=\"step-up\"]").count()).isGreaterThanOrEqualTo(1);

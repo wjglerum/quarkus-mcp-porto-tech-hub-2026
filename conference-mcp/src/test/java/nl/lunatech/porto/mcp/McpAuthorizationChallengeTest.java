@@ -8,6 +8,8 @@ import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,8 +57,13 @@ class McpAuthorizationChallengeTest {
                     assertNotNull(wwwAuthenticate, "expected a WWW-Authenticate challenge");
                     assertTrue(wwwAuthenticate.contains("error=\"insufficient_scope\""),
                             "expected an insufficient_scope error, got: " + wwwAuthenticate);
-                    assertTrue(wwwAuthenticate.contains("scope=\"attendee\""),
-                            "expected the required scope, got: " + wwwAuthenticate);
+                    // The client re-authorizes with these scopes: attendee for the endpoint, and
+                    // the delegation scope so the new token still lets conference-mcp act for the user.
+                    Matcher scope = Pattern.compile("scope=\"([^\"]*)\"").matcher(wwwAuthenticate);
+                    assertTrue(scope.find(), "expected a scope parameter, got: " + wwwAuthenticate);
+                    assertEquals(Set.of("attendee", "delegation:client:conference-mcp"),
+                            Set.of(scope.group(1).split(" ")),
+                            "expected the required scopes, got: " + wwwAuthenticate);
                     assertTrue(wwwAuthenticate.contains("resource_metadata="),
                             "expected a resource_metadata pointer, got: " + wwwAuthenticate);
                 })

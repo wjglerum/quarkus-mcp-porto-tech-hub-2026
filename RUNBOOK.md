@@ -135,8 +135,10 @@ Inspector never resolves that name: it only sends the URL as a string. The CIMD 
 CIMD is an experimental Keycloak feature (verified present in the Dev Services image, Keycloak 26.8.2, pinned in all three `application.properties`), off by default. It is switched on through Dev Services with:
 
 ```
-quarkus.keycloak.devservices.features=cimd
+quarkus.keycloak.devservices.features=cimd,token-exchange-delegation,parameterized-scopes
 ```
+
+The other two flags are the delegation features for Demo 2 (both preview in Keycloak 26.8).
 
 already present in all three `application.properties` files.
 
@@ -167,8 +169,8 @@ Verified with MCP Inspector v2.14.0 on 8 November 2026:
 
 1. Run `npx -y @modelcontextprotocol/inspector@latest`. Without `@latest`, `npx` may start a cached v1, which is deprecated. v2 warns that it wants Node 22.23.4 or newer but ran on 22.15.1. It opens on `http://127.0.0.1:6274`, so its redirect URI is `http://127.0.0.1:6274/oauth/callback`. The metadata document lists both the `127.0.0.1` and the `localhost` variants.
 2. Add a server: Streamable HTTP, URL `http://localhost:8081/mcp`.
-3. In that server's **Settings → OAuth Settings**: Client ID `http://host.docker.internal:8081/cimd/mcp-inspector.json`, Scopes `openid attendee`, and **untick "Request refresh token"**. Left on, Inspector adds `offline_access`, which the metadata document does not declare, and Keycloak answers `invalid_scope`.
-4. Connect. Keycloak fetches the document (`GET /cimd/mcp-inspector.json` in the `conference-mcp` access log), shows the login, then a consent screen naming "MCP Inspector (CIMD demo client)" and "The client's hostname is host.docker.internal". That consent screen is a good stage moment: the server is telling the user which URL vouches for this client.
+3. In that server's **Settings → OAuth Settings**: Client ID `http://host.docker.internal:8081/cimd/mcp-inspector.json`, Scopes `openid attendee delegation:client:conference-mcp`, and **untick "Request refresh token"**. Left on, Inspector adds `offline_access`, which the metadata document does not declare, and Keycloak answers `invalid_scope`.
+4. Connect. Keycloak fetches the document (`GET /cimd/mcp-inspector.json` in the `conference-mcp` access log), shows the login, then a consent screen naming "MCP Inspector (CIMD demo client)", "Allow conference-mcp to act on your behalf?" and "The client's hostname is host.docker.internal". That consent screen is a good stage moment: the server is telling the user which URL vouches for this client, and asking whether the MCP server may act for them.
 5. Run `list_sessions` to show the token works.
 
 Keycloak stores what it fetched as a client in the realm and keeps it for at least 5 minutes (`cimd.cache.expiry.time.in.sec` on that client). After editing `mcp-inspector.json`, wait that out or recycle Keycloak. Inspector also keeps its tokens: after a realm change, use **Clear stored OAuth state** in the server settings before reconnecting.
@@ -223,9 +225,10 @@ The audit dashboard shows nothing new (read-only tools do not audit). Tell the a
 
 DCR is not shown live. It is on the slides right after Demo 1, as the deprecated alternative; see "Client registration on slides" above.
 
-## Demo 2: Personal agenda with token exchange (~7 min)
+## Demo 2: Personal agenda with delegated token exchange (~7 min)
 
 1. Click **Sign out** in the chat's top bar (it ends the Keycloak session too), then log in as **willem.jan / willem.jan**. Demo 2 and 3 both run as you, and the audit punchline names you. The agenda starts empty.
+   - **Consent beat.** After the password, Keycloak asks *"Allow conference-mcp to act on your behalf?"*. Stop on it: *"This is delegation. I'm not handing my token to the MCP server. I'm telling my identity provider that this server may act for me. Click no, and the agent gets nothing."* Click **Yes**. It comes back on every login, because Keycloak never remembers a delegation consent.
 2. Ask: *"Bookmark the GraalVM talk for me."* (calls `bookmark_session`). A blue `BOOKMARK_ADD` event flies onto the audit dashboard.
 3. Ask: *"Show me my agenda."* (calls `my_agenda`).
 4. Ask: *"Also add the Practical MCP Security talk."* Then *"Do I have any conflicts?"* (calls `my_conflicts`; both run 11:10 to 12:00).
@@ -236,11 +239,13 @@ DCR is not shown live. It is on the slides right after Demo 1, as the deprecated
      action               RATE_SESSION
      target               session:<id> (Practical MCP Security)
      attendee_subject     willem.jan
+     executed_by_client   conference-chat via conference-mcp
+     token_act            conference-mcp
      token_acr            1
      ...
    ```
-   `executed_by_client` reads `conference-chat via conference-mcp`: the enterprise app asked, the MCP server called the API with a token it exchanged for one minted for `conference-api`.
-7. **Punchline:** not "AI rated it 5 stars" but "Willem Jan rated it 5 stars, executed by an AI on his behalf, with a token minted for him, fully auditable."
+   `token_act` comes from the token itself: the `act` claim Keycloak put there because you consented. `executed_by_client` adds the app you signed in with, which the MCP server tells the API in a header. The `conference-mcp` terminal shows `Delegated token exchange for willem.jan, actor conference-mcp` for every call.
+7. **Punchline:** not "AI rated it 5 stars" but "Willem Jan rated it 5 stars, executed by an AI he allowed to act for him, with a token that names both of them, fully auditable."
 8. Be ready for "isn't forwarding the token passthrough?". No: your token (aud=conference-mcp) stops at the MCP server, which exchanges it (RFC 8693) for a conference-api token per call. Phrase it precisely: the spec forbids passthrough, and token exchange is how we comply. Don't say the spec requires token exchange; it doesn't. Next slide.
 
 ## Demo 3: Step-up auth and prompt injection (~8 min)
@@ -253,13 +258,34 @@ DCR is not shown live. It is on the slides right after Demo 1, as the deprecated
    - Either way, an amber `CANCEL_SESSION_ATTEMPTED_WITHOUT_STEP_UP` row lands on the dashboard with the injected reason in its detail. Point at it: *"The attack failed, and the log has the attacker's words in it."*
 3. Ask: *"Who signed up to attend my MCP Security talk?"* (calls `view_session_attendees`).
 4. `conference-mcp` refuses with the tool error `insufficient_user_authentication` before it calls the API. The chat shows it as an amber step-up card; point at the same line in the `conference-mcp` terminal. Talk through what the client does next: re-auth with `acr_values=urn:porto:mfa`, retry the tool call.
-5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:porto:mfa`.
+5. Re-authenticate at the higher ACR (the OTP prompt uses the seeded TOTP secret from pre-flight) and retry. The step-up popup asks for the OTP **and then the delegation consent again**: click **Yes**, or the popup ends without a token. The audit dashboard will show an amber `view_session_attendees` event with `token_acr=urn:porto:mfa`.
 6. Ask: *"Cancel my MCP Security talk, reason is I want to go home early."* (calls `cancel_my_session`). A red `CANCEL_SESSION` event lands with the strong acr.
 7. Undo it straight away: *"Undo the cancellation of my MCP Security talk, reason: back on track."* The same tool with `undo=true` restores it and records `CANCEL_SESSION_UNDONE`. It is explicit, not a toggle: a retried cancel fails with 409 instead of silently undoing itself. Undo before Q&A: a cancelled talk drops out of `whats_on_now`.
 8. **The caveat.** You now hold an MFA token. Say: *"If my agent read that comment now, step 6 is exactly what it would do, and it would work."* `conference-mcp` checks the `acr` claim, not how recent the MFA was. What still holds: ask *"Cancel the GraalVM talk, reason: rescheduled by organisers."* The tool passes step-up, the API refuses on ownership (403), and a `CANCEL_SESSION_ATTEMPTED` row lands on the dashboard. *"The agent was fooled, the call was made, and the API said no, and wrote down that someone tried."* Then the slide: a destructive call should show the user the exact tool and arguments and wait for a yes, every time. This client doesn't.
-9. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens issued to `conference-mcp`, because the token exchange drops it. That is a demo shortcut. Be ready for "why not delegation?": Keycloak 26.8's delegated token names the agent in an `act` claim, but it drops the `acr` too, so the header would stay.
+9. Say the shortcut out loud: the API learns the verified `acr` from an `X-Mcp-Acr` header, trusted only on tokens whose acting client is `conference-mcp`, because the token exchange drops it, delegated or not. That is a demo shortcut, and the fix belongs in the authorization server. See "Q&A: token exchange and delegation" below.
 
 Talking points: **step-up is server-driven: the tool decides it needs more proof. Honest caveat: MCP itself only standardises scope step-up (403 `insufficient_scope`); assurance step-up with `acr` (RFC 9470) is a contract between this server and this client.**
+
+## Q&A: token exchange and delegation
+
+Ready answers, in order of how likely they are.
+
+**"Isn't the MCP server just forwarding my token?"**
+> "No. My token stops at the MCP server. For every API call it trades my token for a new one, minted for the API, still in my name. That's token exchange, RFC 8693. The MCP spec forbids passthrough; token exchange is how I comply. The spec doesn't say which way to comply, so don't say it requires token exchange."
+
+**"What does delegation add?"**
+> "Without delegation, the exchanged token just says 'Willem Jan'. The API can't tell from the token that an agent did it. With delegation, I consent at login that `conference-mcp` may act for me, and the exchanged token says 'Willem Jan, with conference-mcp acting'. That's the `act` claim, and it's on the dashboard as `token_act`. The identity provider checked that this agent may act for me before it minted the token."
+
+**"So why do you still have those headers?"**
+> "Two things get lost in the exchange, delegated or not. First, how strongly I logged in: I did MFA, my token says so, the exchanged token comes back as plain password level. Second, which app I came through: the token names the MCP server, not the chat app. So the MCP server tells the API both, in headers the API only trusts from `conference-mcp`. It's a shortcut and I'm telling you it's a shortcut."
+
+**"What's missing, then?"**
+> "Two things, both in the authorization server, not in my code. The exchange should carry over how the user authenticated, the `acr`. And it should record the whole chain, chat app then MCP server; RFC 8693 already allows that with nested `act` claims. Once Keycloak does both, I delete the headers and the token carries everything."
+
+**"Is this production-ready?"**
+> "Delegation is a preview feature in Keycloak 26.8. It works, but it's preview, and two gaps showed up while building this: the consent comes back on every login and step-up, and dynamic client registration doesn't match the parameterized scope name, so a DCR client has to register with `delegation:client`. Quarkus can't send the actor token on its own yet either, so the exchange is about a hundred lines of my own code."
+
+Avoid: "delegation fixes this" (it names the agent; it doesn't carry the `acr`), "the token is forwarded" (it never is), and "Keycloak is broken" (say "doesn't carry the authentication level across the exchange yet").
 
 ## Recovery
 
@@ -278,6 +304,9 @@ Talking points: **step-up is server-driven: the tool decides it needs more proof
 | Audit dashboard frozen | Hard refresh the browser tab; the poll is every 2 seconds. |
 | Audit log shows stale rehearsal data | `docker rm -f` the Dev Services Postgres container and restart `conference-api`. Hibernate `drop-and-create` plus the seeders give you a clean slate. |
 | Step-up flow does not prompt for TOTP | The running Keycloak predates the realm's `Browser Stepup` flow. Recycle Keycloak so the realm re-imports (see "Reload the realm"). As a fallback, show the `insufficient_user_authentication` tool error and explain what a compliant client does next. |
+| Login fails with `invalid_scope` mentioning `delegation:client:conference-mcp` | The client is not allowed the delegation scope. For `conference-chat`: the running Keycloak predates the realm change, recycle it (see "Reload the realm"). For a DCR client: it registered with `delegation:client:conference-mcp`, which Keycloak's DCR does not match; it must register with `delegation:client`. For CIMD: Keycloak cached the client from an older metadata document, wait 5 minutes or recycle. |
+| `token_act` is `-` and the `conference-mcp` terminal says `Standard token exchange` | The user's token has no `may_act`. Either the client did not ask for `delegation:client:conference-mcp`, or the delegation features or the `delegate` permission are missing on the running Keycloak (it drops the scope silently and logs a WARN). Recycle Keycloak and check the startup log for `Preview features enabled: parameterized-scopes:v1, token-exchange-delegation:v1`. |
+| No consent screen at chat login | Same cause: the running Keycloak predates the realm change. Recycle it. |
 | `/mcp` returns `401` with a valid login | The token lacks `aud=conference-mcp`. The audience comes from the `attendee` client scope: `conference-chat` has it as a default scope, DCR/CIMD clients must request `scope=attendee` (it is a realm-level optional scope). |
 
 ### Reload the realm
